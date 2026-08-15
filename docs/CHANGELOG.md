@@ -1,5 +1,44 @@
 # FotoFauna — Changelog (rolling)
 
+## 2026-08-15 11:xx — FotoFauna/BioQuest: cascadas LLM saneadas (modelos muertos + Gemini fuera)
+**Deploy:** `docker restart fauna_api` (backend único, sirve PRE+PRO) · **Git:** `hansolo-dockers`
+
+Sesión de mantenimiento nocturno en paralelo al reembed de BioFauna. Auditoría (`grep -rl`) de
+modelos LLM caducados/retirados por los proveedores, disparada por un aviso oficial de Groq
+(decommission `llama-3.3-70b-versatile`, 2026-08-16) y verificación real contra las APIs en vivo
+(no de memoria) de Groq/OpenRouter/Gemini/Cerebras.
+
+- **`vision_routes.py`/`vision_detect.py`** (cascada `/vision/locate`, localización del sujeto
+  antes de recortar): eliminada la rama Gemini (decisión del usuario — cuota gratuita de Google
+  de solo 20 peticiones/día por proyecto/modelo, compartida entre todas las apps del host, se
+  agotaba casi de inmediato). Queda YOLO → OpenRouter (`google/gemma-4-31b-it:free` +
+  `nvidia/nemotron-nano-12b-v2-vl:free`) → Groq (`qwen/qwen3.6-27b`).
+- **`vision_identify.py`**: `_identify_with_gemini` (capa 3, ya código muerto sin llamadas) y sus
+  imports eliminados. **`CEREBRAS_MODEL` corregido**: `llama3.3-70b` ya no existe en el catálogo
+  de Cerebras (verificado en vivo, catálogo actual: `gpt-oss-120b`/`zai-glm-4.7`/`gemma-4-31b`) →
+  nuevo default `gpt-oss-120b` (~10ms de latencia real medida). Este paso (capa 3c, refinado
+  taxonómico anti-alucinación) llevaba tiempo fallando en silencio y devolviendo el resultado sin
+  validar.
+- **`routes_academy.py`** (backend de BioQuest Academy — BioQuest no tiene backend propio, lo
+  sirve `fauna_api`): eliminada función `_ai_call_gemini` (con reintentos que desperdiciaban hasta
+  30s por llamada contra una cuota ya agotada) y su rama en resumen narrado de especies + ficha
+  rica de especie. `OPENROUTER_TEXT_MODEL` (`meta-llama/llama-3.3-70b-instruct:free`, retirado del
+  catálogo) → `nvidia/nemotron-3-super-120b-a12b:free`.
+- **`routes_search.py`**, **`academy/refresh_common_names.py`**: mismos modelos muertos de Groq/
+  OpenRouter corregidos.
+- **Verificación real** (no solo edición de config, pedido explícito por el usuario): llamadas
+  directas a los 3 proveedores con los modelos nuevos (Groq y OpenRouter 200 OK; Gemini 429 cuota
+  agotada, motivo real de por qué se quitó) + tráfico de producción real (ráfaga de ~46 llamadas
+  del refresco de catálogo Academy tras el restart: OpenRouter respondió 200 OK el 100% de las
+  veces) + sesión de navegador real con Playwright/Chrome del sistema (login, subida de foto,
+  identificación — 0 errores de consola).
+- **Nota infra**: `tests/e2e_fotofauna_flow.py` (Playwright) no arrancaba en Ubuntu 26.04 con el
+  Chromium que descarga por defecto — arreglado apuntando a `google-chrome-stable` del sistema
+  (`channel="chrome"`). Sus selectores de login están desactualizados (UI cambió a
+  `.ff-cross-link--guest`/`.bq-modal--auth`, el script busca `.fsh-modal`) — pendiente de
+  actualizar si se quiere que el CI de cada 6h vuelva a pasar.
+
+
 ## 2026-08-03 10:43 — FotoFauna
 **Build PRE:** `3e2a4f3f` · **Origen:** sync automático (Chewie)
 
