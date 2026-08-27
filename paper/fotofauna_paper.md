@@ -6,7 +6,7 @@
 
 ## Abstract
 
-FotoFauna is a web-based citizen science platform that integrates automated AI species identification with community validation for Mediterranean marine fauna. The platform combines a region-specific AI engine (**BioFauna**, formerly YOLOFauna — see the companion [BioFauna paper](https://github.com/yespi/biofauna) for full model methodology) — currently a **frozen BioCLIP-2.5 ViT-H** retrieval system over ~762,000 reference embeddings across ~4,709 target species, with test-time augmentation and hierarchical taxonomic abstention — with a multi-engine identification pipeline, organism detection via YOLOv8 segmentation, and automated publication to the Minka citizen science network. High-confidence identifications (calibrated probability >= 0.80, 2026-08-27) are auto-published with an estimated **95.3% precision** at **57.4% coverage** on the current observation-stratified calibration set (n=12,788) — earlier editions of this paper cited a smaller ViT-L-era cohort (92.2% precision / 30% coverage at p>=0.90); both the model and the operating threshold have since changed, see §5.2 and §6.4. The platform has processed tens of thousands of observations and serves as both a data collection tool and a testbed for AI-assisted identification workflows. This paper describes the platform architecture, identification pipeline, auto-publication system, and the feedback loop between automated and expert-curated identifications.
+FotoFauna is a web-based citizen science platform that integrates automated AI species identification with community validation for Mediterranean marine fauna. The platform combines a region-specific AI engine (**BioFauna** — see the companion [BioFauna paper](https://github.com/yespi/biofauna) for full model methodology), currently a **frozen BioCLIP-2.5 ViT-H** retrieval system with test-time augmentation over 762,082 reference embeddings across 4,709 target species and hierarchical taxonomic abstention, with a multi-engine identification pipeline, organism detection via YOLOv8 segmentation, and automated publication to the Minka citizen science network. High-confidence identifications (calibrated probability ≥ 0.80) are auto-published with an estimated **95.3% precision** at **57.4% coverage** on the current observation-stratified calibration set (n=12,788, §5.2). The platform has processed tens of thousands of observations and serves as both a data collection tool and a testbed for AI-assisted identification workflows. This paper describes the platform architecture, identification pipeline, auto-publication system from the end user's perspective, and the feedback loop between automated and expert-curated identifications; the technical internals of the identification model and the AutoID scheduling engine are covered in depth in the companion BioFauna paper.
 
 ## 1. Introduction
 
@@ -16,14 +16,14 @@ The Mediterranean Sea hosts over 17,000 marine species (Coll et al., 2010), yet 
 
 ### 1.2 AI-Assisted Citizen Science
 
-Automated image-based identification offers a complementary approach: providing instant species suggestions that accelerate the identification pipeline. Recent advances in vision-language models, particularly BioCLIP (Stevens et al., 2024), have enabled region-specific fine-tuning on consumer hardware (Zafra, 2026), making AI-assisted identification feasible for specialized platforms.
+Automated image-based identification offers a complementary approach: providing instant species suggestions that accelerate the identification pipeline. Recent advances in vision-language models, particularly BioCLIP (Stevens et al., 2024), have made a strong, frozen, region-adapted retrieval system practical on consumer hardware (companion BioFauna paper), without requiring the backbone itself to be fine-tuned — an empirical finding of that companion work, not an assumption of this one.
 
 ### 1.3 Platform Goals
 
 FotoFauna was developed with three primary goals:
 
 1. **Speed**: Provide instant species identification (<2 seconds) for Mediterranean marine photographs
-2. **Accuracy**: Achieve >90% precision on auto-published identifications through calibrated confidence thresholds
+2. **Accuracy**: Achieve high precision (currently ~95%, §5.2) on auto-published identifications through calibrated confidence thresholds
 3. **Feedback**: Create a virtuous cycle where AI identifications are validated by experts, and corrections feed back into model improvement
 
 ## 2. Platform Architecture
@@ -46,28 +46,35 @@ FotoFauna runs on a self-hosted Ubuntu server with the following components:
 
 ```mermaid
 flowchart TD
-    A["User uploads photo(s)"] --> B["EXIF extraction\n(GPS, date/time)"]
-    B --> C["Image preprocessing\n(orientation, resize)"]
-    C --> D["Organism detection\n(YOLOv8 segmentation)"]
-    D --> E{"Organism\nfound?"}
-    E -- "No" --> F["Use full frame\ncrop_source=full"]
-    E -- "Yes" --> G["Crop to bounding box\ncrop_source=yolo"]
-    F --> H["Multi-engine identification (§4)"]
-    G --> H
-    H --> H1["BioFauna: BioCLIP-2.5 ViT-H\n+ TTA + k-NN (k=15)"]
-    H1 --> I{"Calibrated\nconfidence"}
-    I -- "p >= 0.80" --> J["Auto-publish to Minka\n(§5, §6)"]
-    I -- "p < 0.80" --> K["Cross-check: iNaturalist CV\n/ Minka CV fallback (§4.2-4.3)"]
-    K --> L{"Engines\nagree?"}
-    L -- "Yes, high conf" --> J
-    L -- "No / still low" --> M["Manual review queue\n(curator / user)"]
-    M --> N["Curator confirms or corrects"]
-    N --> J
-    J --> O["Published observation\non Minka + FotoFauna gallery"]
-    O --> P["Curator feedback loop (§10)\nfeeds calibration data"]
+    subgraph U["Interactive upload path (this user, right now)"]
+        A["User uploads photo(s)"] --> B["EXIF extraction\n(GPS, date/time)"]
+        B --> C["Image preprocessing\n(orientation, resize)"]
+        C --> D["Organism detection\n(YOLOv8 segmentation)"]
+        D --> E{"Organism\nfound?"}
+        E -- "No" --> F["Use full frame\ncrop_source=full"]
+        E -- "Yes" --> G["Crop to bounding box\ncrop_source=yolo"]
+        F --> H["Multi-engine identification (§4)"]
+        G --> H
+        H --> H1["BioFauna: BioCLIP-2.5 ViT-H\n+ TTA + k-NN (k=15)"]
+        H1 --> S["AI suggestion shown\nto the user in FotoFauna"]
+        S --> T{"User reviews\nsuggestion"}
+        T -- "Accepts / edits" --> V["User manually publishes\nto Minka and/or iNaturalist"]
+        T -- "Declines" --> W["Kept in FotoFauna gallery only,\nnot published"]
+    end
+
+    subgraph WV["AutoID wave (separate, hourly, not tied to any one upload)"]
+        M["Minka pool: any observation\nawaiting identification\n(from FotoFauna or elsewhere)"] --> N["Same identification\nengines (§4)"]
+        N --> I{"Calibrated\nconfidence"}
+        I -- "p >= 0.80" --> J["Wave auto-publishes\nto Minka directly (§6)"]
+        I -- "p < 0.80" --> K["Left for a curator\nor another user to identify"]
+    end
+
+    V -.->|"published observation is now\nin the same Minka pool as anyone else's"| M
+    J --> P["Curator feedback loop (§10)"]
+    V --> P
 ```
 
-*Figure 1. End-to-end observation flow, from upload to published, curator-reviewed identification. The AutoID wave system (§6) runs this same identification/publication path in batch, hourly, over previously-uploaded-but-unidentified Minka observations rather than in response to a live upload.*
+*Figure 1. Two distinct flows, often confused: (top) a user uploading through FotoFauna gets an AI **suggestion** and always publishes to Minka/iNaturalist manually, themselves — there is no auto-publication in this path. (bottom) the AutoID wave (§6) is a separate, hourly batch process that scans Minka's general pool of unidentified observations — which may include this user's own, once published — and auto-publishes an identification on the observation owner's behalf only when confidence clears the bar. The two share the same identification engines but are triggered differently and happen at different times.*
 
 ### 2.2 Authentication
 
@@ -179,9 +186,7 @@ FotoFauna queries multiple identification engines with a priority-based fusion s
 
 ### 4.1 BioFauna (Primary)
 
-> Renamed from **YOLOFauna**; earlier drafts of this section described the original QLoRA/ViT-L
-> design. Current production (2026-08-27), see the [BioFauna paper](https://github.com/yespi/biofauna)
-> for full methodology and ablation history:
+BioFauna is FotoFauna's own identification engine (see the companion [BioFauna paper](https://github.com/yespi/biofauna) for full methodology and its ablation history):
 
 - **Model**: BioCLIP-2.5 **ViT-H/14**, **frozen** (no fine-tuning in production — QLoRA/LoRA/head
   sidecar/SupCon fine-tuning attempts on this backbone were all tried and closed; see the
@@ -234,6 +239,30 @@ The best identification is selected by priority:
 4. Minka CV as secondary fallback
 5. AI vision models for consensus when engines disagree
 
+```mermaid
+flowchart TD
+    A["Photo + crop"] --> B["BioFauna\n(§4.1)"]
+    B --> C{"BioFauna confidence\nabove corroboration\nthreshold?"}
+    C -- "Yes" --> D["iNaturalist CV\n(§4.2)"]
+    D --> E{"Agree with\nBioFauna?"}
+    E -- "Yes" --> F["Use BioFauna result\n(corroborated)"]
+    E -- "No / unavailable" --> G["Use BioFauna result\n(uncorroborated)"]
+    C -- "No" --> H["iNaturalist CV\n(§4.2)"]
+    H --> I{"iNat CV\nresult available?"}
+    I -- "Yes" --> J["Use iNat CV result"]
+    I -- "No" --> K["Minka CV\n(§4.3)"]
+    K --> L{"Minka CV\nresult available?"}
+    L -- "Yes" --> M["Use Minka CV result"]
+    L -- "No" --> N["AI vision models\n(§4.4) as last resort"]
+    F --> O["Result -> confidence gate (§5)"]
+    G --> O
+    J --> O
+    M --> O
+    N --> O
+```
+
+*Figure 2. Engine priority and fallback logic. BioFauna is always tried first; the other three engines are consulted only as corroboration or fallback, in that order, never in parallel unless BioFauna's own confidence check triggers a corroboration call.*
+
 ## 5. Confidence and Auto-Publication
 
 ### 5.1 Calibrated Confidence
@@ -284,61 +313,44 @@ Observations are published to Minka via its REST API:
 - AI engine version and identification source
 - Taxonomic notes
 
-## 6. Wave System (Batch AutoID)
+## 6. AutoID: The Automated Identification Wave, from the User's Side
 
-The Wave system processes batches of uploaded-but-unidentified observations on a configurable schedule.
+This section describes AutoID as a FotoFauna **user** or **Minka observer** experiences it. The scheduling engine, confidence math, and database configuration behind it are covered in depth in the companion [BioFauna paper](https://github.com/yespi/biofauna) (§4.3, Figure 4); this section deliberately stays at the level of "what shows up in your account and why."
 
-### 6.1 Configuration Parameters
+### 6.1 What the User Sees
 
-| Parameter | Current | Description |
-|-----------|---------|-------------|
-| `autoid_schedules.min_confidence` (per-schedule, Postgres) | **80** (was 90) | Minimum calibrated probability to auto-publish; the real gate checked by the hourly wave loop, configurable per schedule rather than a fixed env var |
-| `autoid_schedules.max_per_hour` | 20 | Publication cap per hour |
-| `autoid_schedules.only_unidentified` | true | Minka pool scope: `true` = observations with zero identifications from anyone; `false` = broader "pending confirmation" pool (reserve lever if the strict pool runs dry) |
-| `WAVE_TIMEOUT_S` (code constant) | **1800s** (was 900s) | Wall-clock ceiling per hourly wave run for scanning Minka result pages — not a quota ceiling |
-| `WAVE_BIOFAUNA_MIN_P_SPECIES` (env, legacy name) | 0.90 default | A *separate*, narrower knob used only inside the single-observation iNaturalist-corroboration helper (decides whether BioFauna confidence alone is enough to skip a corroborating iNat CV call); distinct from the per-schedule wave gate above and not what limits wave throughput |
+A user does not have to do anything for AutoID to act on their observations: any Minka observation without a confirmed species identification is a candidate, whether it was uploaded through FotoFauna or directly on Minka. Once an hour, a background process looks at a batch of such observations and, for the ones it is confident about, posts an identification — visible on Minka exactly as if a curator or another community member had added it, attributed to the AI account rather than a person.
 
-### 6.2 Wave Processing Pipeline
+```mermaid
+stateDiagram-v2
+    [*] --> Uploaded: User uploads photo(s)\nor observation exists on Minka
+    Uploaded --> AwaitingID: No confirmed species yet
+    AwaitingID --> ScannedByWave: Picked up by the\nhourly AutoID wave
+    ScannedByWave --> AutoPublished: Confidence high enough\n(currently p >= 0.80)
+    ScannedByWave --> StillAwaiting: Confidence too low,\nor hourly quota already reached
+    AutoPublished --> CuratorReviewed: A curator later\nconfirms or corrects it
+    StillAwaiting --> AwaitingID: Reconsidered on a\nlater hourly run
+    StillAwaiting --> ManuallyIdentified: A person (curator or\nother user) identifies it directly
+    CuratorReviewed --> [*]
+    ManuallyIdentified --> [*]
+```
 
-For each wave:
-1. Query database for unprocessed observations
-2. Download photo (if external URL)
-3. Run organism detection (YOLOv8)
-4. Run identification pipeline
-5. Check confidence against threshold
-6. If >= threshold: publish to Minka
-7. If < threshold: save for manual review
-8. Record in autoid_history table
+*Figure 3. What an observation's identification status looks like from the outside, independent of the internal scheduling mechanics (BioFauna paper, Figure 4). "StillAwaiting" is not a dead end — the same observation is reconsidered on every subsequent hourly run until it either clears the confidence bar or a person identifies it directly.*
+
+### 6.2 Visible Signals
+
+- **Auto-published identification**: appears on the Minka observation page with a scientific name, a confidence percentage, and the AI account as the identifying user — functionally identical to a human identification, and just as correctable if wrong.
+- **Species-only or genus-only identification**: when the model is not confident enough at the species level but is confident at a higher taxonomic rank (§ hierarchical fallback, BioFauna paper §3.5), the published identification is at that higher rank rather than a guessed species name.
+- **No action yet**: an observation can sit in "awaiting" for more than one hourly cycle if the hourly publication quota was already filled by other observations, or if the pool of currently-unidentified Minka observations is large — this is a scheduling artifact, not a rejection.
+- **Curator review**: identifications below the confidence bar are not published automatically; they remain visible to curators (§10) as candidates for manual review rather than being silently discarded.
 
 ### 6.3 Autoid History
 
-All auto-published observations are recorded with:
-- Observation ID and URI
-- Scientific name and confidence
-- Identification source (BioFauna, iNat CV, Minka CV)
-- Timestamp
-- Publication status
+Every auto-published observation is recorded with its observation ID and URI, scientific name and confidence, identification source (BioFauna, iNat CV, or Minka CV — §4), timestamp, and publication status. This log is what curators use to audit AutoID's track record (§10) and what a throughput retuning pass (below) can be checked against directly, without needing to instrument anything new.
 
-### 6.4 Throughput tuning (2026-08-27)
+### 6.4 Keeping Pace With the Configured Volume (2026-08-27)
 
-Measured production volume was running at ~5 publications/hour against the configured cap of
-20/hour — a query against `autoid_history` confirmed 100% of recent publications were sourced
-from BioFauna (not the iNat/Minka CV fallbacks), so the shortfall was a volume problem, not a
-quality or source-mix problem. Two independent causes were found and fixed in the same session:
-
-1. **Scan timeout too short.** `WAVE_TIMEOUT_S` (a wall-clock ceiling on how long the hourly wave
-   spends paging through Minka's "needs identification" results before giving up, independent of
-   whether the hourly publication quota has been reached) was set to 900 seconds — often too
-   short to reach 20 qualifying candidates once the confidence filter had rejected most of the
-   page. Raised to 1800 seconds, which still leaves comfortable margin before the next hourly
-   run.
-2. **Confidence threshold conservative relative to the current calibration.** See §5.2 — lowered
-   from 0.90 to 0.80, trading ≈1.5pp of estimated precision for a ≈33% relative increase in the
-   fraction of candidates that clear the bar.
-
-A third lever — broadening `only_unidentified` from the strict "zero identifications" pool to
-the wider "pending confirmation" pool — is documented and ready but was not exercised, held in
-reserve in case the narrower pool is exhausted after a few hours of running at the new settings.
+At one point, measured production volume was running at roughly a quarter of the configured hourly cap, even though essentially all recent publications were coming from BioFauna directly (not the iNat/Minka CV fallbacks) — i.e. the shortfall was a pacing problem, not a quality problem. Two independent, unrelated causes were found and fixed the same day: the wave was giving up on scanning for new candidates too early in the hour, and the confidence bar was set higher than the current calibration curve actually required for a comparable precision level. Both fixes are described technically in the BioFauna paper (§4.3); from the user's side, the only visible effect is that previously-stalled observations now clear the queue within the hour rather than sitting in "awaiting" for longer.
 
 ## 7. Photo Gallery and Search
 
@@ -373,7 +385,7 @@ Full observation page with:
 
 ### 8.1 Species Cards
 
-Each of 1,369 species has a detail card with:
+Each of the ~4,709 target species has a detail card with:
 - Representative photo gallery
 - Scientific and common names (Catalan/Spanish/English)
 - WoRMS-validated taxonomy
@@ -400,11 +412,11 @@ Nightly cron job:
 
 ### 9.2 Geo Priors
 
-YOLOFauna geographic priors:
-- 77,244 occurrence points for 1,348 species
+BioFauna's geographic priors (also detailed in the companion paper, §3.2.2, §4.6.2):
+- 77,722 occurrence points for 1,386 species (as of 2026-08-27; expanded on request when a specific species turns out to have none, e.g. to test whether two visually similar species are geographically separable)
 - Haversine distance (great-circle)
-- Gaussian boost: sigma=200km, max 3x multiplier
-- No penalty for missing data (boost=1.0)
+- Multiplicative Gaussian boost: sigma≈200km, bounded multiplier
+- No penalty for missing data — a species with no cached coordinates simply gets no boost, not a negative one
 
 ### 9.3 Seasonal Awareness
 
@@ -422,33 +434,40 @@ Each auto-published observation is tracked through its lifecycle:
 3. Corrected (curator changed the identification)
 4. Rejected (curator determined unidentifiable)
 
+```mermaid
+flowchart LR
+    A["AutoID publishes\nidentification (§6)"] --> B["Pending"]
+    B --> C{"Curator\nreview"}
+    C -- "Agrees" --> D["Confirmed"]
+    C -- "Disagrees" --> E["Corrected\n(curator's ID stands)"]
+    C -- "Not identifiable" --> F["Rejected"]
+    D --> G["autoid_history\n+ Minka identification record"]
+    E --> G
+    F --> G
+    G --> H["Confusion-pair and\ncalibration analysis\n(BioFauna paper §3.5, §4.6)"]
+    H -.->|"informs, does not yet\nautomatically retrain"| I["Cryptic-pair rules,\nabstention thresholds"]
+```
+
+*Figure 4. Curator feedback loop as currently implemented. The dashed arrow marks a real limitation: curator corrections and the confusion-pair analysis they support currently inform manual updates to abstention rules and calibration (BioFauna paper, §3.5.5, §4.6) rather than an automatic retraining pipeline — closing that loop is listed as future work in both companion papers.*
+
 ### 10.2 Feedback Integration
 
-Curator actions feed back into the system:
-- **Confirmations**: Added to training data with high weight
-- **Corrections**: Used as hard negative pairs for triplet loss
-- **Rejections**: Flag species for additional training data collection
+Curator actions are recorded and used as follows:
+- **Confirmations**: recorded in `autoid_history`; contribute to the observation-stratified evaluation cohort used throughout the BioFauna paper.
+- **Corrections**: recorded with both the AI's original call and the curator's correction; the accumulated confusion pairs from this and from held-out evaluation data are what feeds the cryptic-pair and always-abstain-genus rules described in the BioFauna paper (§3.5.5) and the error-taxonomy analysis in §4.6 of that paper.
+- **Rejections**: flag species for additional targeted photo collection when the rejection reflects genuine data scarcity rather than an unidentifiable subject (BioFauna paper §3.1.3, §4.6.1).
+
+Turning this into a fully automatic, continuously-retraining loop is explicitly **not yet done** — see Limitations (§12.3) and the BioFauna paper's own Limitations (§5.4). The current loop is: log everything, analyze periodically, update abstention rules and calibration by hand when the analysis supports it.
 
 ### 10.3 Validation Results
 
-As of August 2026:
-- 100 observations auto-published
-- 21 curator-reviewed
-- 100% confirmation rate
-- Zero corrections
+Early curator review (a first sample of AutoID publications, prior to the current model and threshold configuration) showed a high confirmation rate with the AI erring on the conservative side. That specific sample predates the current BioCLIP-2.5 ViT-H + TTA model and the p≥0.80 operating point (§5.2, §6.4), so it is not repeated here as a current-state number; continuous, unsampled curator-correction logging against the current configuration is listed as open work (§12.3) rather than reported as a finished measurement.
 
 ## 11. Deployment Results
 
 ### 11.1 Usage Statistics
 
-| Metric | Value |
-|--------|-------|
-| Total observations | 32,686 |
-| Auto-published to Minka | 100 |
-| AI identifications (YOLOFauna) | 18% |
-| AI identifications (iNaturalist CV) | 81% |
-| Average identification time | <2 seconds |
-| Platform uptime | >99% |
+The platform has processed tens of thousands of observations since launch. Per-engine identification-source mix and current publication counts are tracked in `autoid_history` (§6.3) and the admin panel rather than restated here as a fixed snapshot, since — unlike the model-accuracy figures throughout this paper, which come from a fixed, reproducible offline evaluation cohort (BioFauna paper, §3.7) — usage counters change continuously and a number printed in a paper draft goes stale the same day. Average identification latency is well under 1 second per crop on the production GPU (BioFauna paper, §4.5).
 
 ### 11.2 Curator Community
 
@@ -461,7 +480,7 @@ The platform has established relationships with professional taxonomists:
 
 ### 12.1 AI-Human Collaboration
 
-FotoFauna demonstrates a practical model for AI-human collaboration in citizen science. Rather than replacing human expertise, the AI accelerates the pipeline by handling routine identifications (30% at high confidence), freeing curators to focus on challenging cases. The 100% curator confirmation rate suggests the AI is appropriately conservative.
+FotoFauna demonstrates a practical model for AI-human collaboration in citizen science. Rather than replacing human expertise, the AI accelerates the pipeline by handling routine identifications at high confidence (§5.2, §6) and by giving every uploading user an instant suggestion even when a curator is not available, freeing curators to focus on challenging or disputed cases (§10).
 
 ### 12.2 Platform Sustainability
 
@@ -469,31 +488,16 @@ The self-hosted architecture, consumer GPU, and open-source model release ensure
 
 ### 12.3 Limitations
 
-- Language: Interface primarily in Spanish
-- Self-hosting complexity
-- Species coverage gaps (394/1369 lack training images)
-- Small curator review sample (21/100)
-- Geographic scope limited to Mediterranean
+- Language: Interface primarily in Spanish.
+- Self-hosting complexity.
+- Species coverage gaps: the catalog tracks species below the reliable-reference-photo threshold explicitly and can target them for download (BioFauna paper, §3.1.1, §4.6.1), but coverage across ~4,709 target species remains uneven.
+- The curator feedback loop (§10) currently informs manual updates to abstention rules and calibration rather than closing into an automatic retraining pipeline — matching the equivalent limitation noted in the BioFauna paper (§5.4).
+- Continuous curator-correction statistics against the current model and threshold configuration are not yet published as an ongoing metric (§10.3); only a fixed offline evaluation cohort is (BioFauna paper, §3.7).
+- Geographic scope limited to Mediterranean; within that scope, the geographic prior does not meaningfully help the hardest same-genus confusion pairs (BioFauna paper, §4.6.2).
 
 ## 13. Conclusion
 
-FotoFauna demonstrates that AI-assisted citizen science is practical, accurate, and sustainable on consumer hardware. The combination of region-specific AI, calibrated confidence, and expert-curated feedback creates a platform that accelerates biodiversity data collection while maintaining high taxonomic standards. The 100% curator confirmation rate validates the approach, and the open-source release enables replication for other regions and taxonomic groups.
-
-## Post-publication updates
-
-**2026-08-27.** The identification engine described in earlier drafts of §4.1 (BioCLIP ViT-L/14
-with QLoRA, k=25, 768-dim, 1,369 species) has been superseded on every axis by the current
-production system: frozen **BioCLIP-2.5 ViT-H**, k=15, 1024-dim, test-time augmentation, ~4,709
-target species / 762,082 reference embeddings, 75.97%/81.29%/84.90% species/genus/family top-1
-on an observation-stratified held-out set. See the companion
-[BioFauna paper](https://github.com/yespi/biofauna) (`paper/01_biofauna.md`) for the full model
-methodology and a rigorous, dated log of what was tried and why — including three independent
-fine-tuning architectures (LoRA, a frozen-backbone linear head, and a frozen-backbone SupCon
-contrastive re-ranker scoped to the hardest confusion pairs) that were each tested and closed
-without beating the plain k-NN baseline, and test-time augmentation, which is the one technique
-that did. The AutoID wave system's confidence threshold and per-wave scan timeout were also
-retuned this session (§5.2, §6.4) after a throughput audit found the hourly wave publishing at
-roughly a quarter of its configured capacity.
+FotoFauna demonstrates that AI-assisted citizen science is practical and sustainable on consumer hardware. The combination of a region-specific AI engine (BioFauna — frozen BioCLIP-2.5 ViT-H, test-time augmentation, calibrated hierarchical abstention), a multi-engine fallback pipeline, an hourly AutoID wave for previously-unidentified observations, and expert-curated feedback creates a platform that accelerates biodiversity data collection while maintaining high taxonomic standards. The open-source release of both this platform and the companion BioFauna model package enables replication for other regions and taxonomic groups.
 
 ## References
 
