@@ -168,6 +168,8 @@ Cuando existe un recorte activo, los nueve filtros de servidor se aplican a ese 
 
 Subexp. y Sobreexp. fijan la cantidad de corrección a partir del **histograma de luminancia de esa región** (mediana, colas, fracción recortada). El deslizador de intensidad es un multiplicador del usuario sobre esa cantidad automática (por defecto 90 %), no una corrección absoluta. Subexp. eleva solo la luminancia, preservando la cromaticidad (sin LIME por canal).
 
+El filtro Marina recupera los rojos atenuados por la profundidad mediante un balance gray-world adaptativo: ganancias por canal acercan las medias de R, G y B a un objetivo común (verde y azul más conservadores que el rojo), seguido de CLAHE en luminancia y un unsharp suave. Desde agosto de 2026 la ganancia del canal rojo usa exponente `strength × 0,82` en lugar de `strength` completo, recortando el tinte salmón/magenta que la recuperación gray-world íntegra puede introducir en agua muy azul sin perder tonos cálidos naturales.
+
 **Antipartículas (eliminación de partículas).** Una herramienta de pintado local aparte — no un filtro global — para eliminar nieve marina, motas de retrodispersión, y partículas flotantes de las fotos submarinas: el usuario pinta sobre las manchas no deseadas con un pincel ajustable, y cada trazo se procesa y se puede deshacer de forma independiente (su propia pila de deshacer, separada de la de la herramienta de recorte). Los cambios persisten al cambiar de filtro o al salir del editor a mitad de edición.
 
 ```mermaid

@@ -185,7 +185,7 @@ Los filtros se aplican siempre **sobre `file_original`** en cadena (orden defini
 | `underexp` | 🌙 Subexp. | `POST /vision/auto-enhance?mode=ai` | Fusión Mertens (exposure fusion multi-exposición sintética) + CLAHE LAB clip=2.5. Para subexposición severa (dark ratio >20% y avgLum <90). | `exposure` |
 | `overexp` | ☀️ Sobreexp. | `POST /vision/auto-enhance?mode=fast` | CLAHE LAB clip=2.0-2.5 + boost de saturación (entorno marino). Para quemados >6%. | `exposure` |
 | `contrast` | ◑ Contraste | `POST /vision/auto-enhance?mode=contrast` | Estiramiento de histograma percentil 1-99% en canal L (LAB) + CLAHE leve clip=1.5. Para histogramas comprimidos (stdLum <38, imagen ni oscura ni quemada). | `exposure` |
-| `marine` | 🌊 Marina | `POST /vision/marine-correct` | Corrección de dominante azul/verde marina. UDCP + balance de blancos adaptativo. | — |
+| `marine` | 🌊 Marina | `POST /vision/marine-correct` | Gray-world adaptativo (R `strength×0,82`, G `strength×0,3`, B↓ `strength×0,4`) + CLAHE L + unsharp suave. | — |
 | `reds` | 🔴 Rojos | `POST /vision/reduce-reds` | Reducción de dominante roja (refracción de agua / luz artificial). | — |
 
 **Grupo `exposure`**: `underexp`, `overexp` y `contrast` son **mutuamente excluyentes** — activar uno desactiva los demás automáticamente (campo `exclusionGroup` en `FILTER_DEFS`).

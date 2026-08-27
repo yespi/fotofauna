@@ -50,7 +50,7 @@ Exp ✨ 🌙 ☀️ ◑  |  Cor 🔍 🎯 ☁️ 💨  |  Col 🌊 🔴
 | **🎯 Enfocar** | Blur real (movimiento, agua) | No altera brillo global |
 | **☁️ Bruma** | Velo azul/verde, agua turbia | No sustituye motas puntuales |
 | **💨 Antipartículas** | Polvo flotante / backscatter **en zonas concretas** | No es filtro global — pinta mota a mota |
-| **🌊 Marina** | Dominante azul submarino | Foto terrestre |
+| **🌊 Marina** | Dominante azul submarino | Foto terrestre | Recupera rojos con gray-world; desde 2026-08 el canal R usa `strength×0,82` (menos salmón) |
 | **🔴 Rojos** | Dominante roja (algas, flash) | Balance OK |
 
 ---

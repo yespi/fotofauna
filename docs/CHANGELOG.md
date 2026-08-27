@@ -1,5 +1,13 @@
 # FotoFauna — Changelog (rolling)
 
+## 2026-08-27 22:20 — Filtro Marina: menos rojo (gray-world ×0,82)
+**Deploy:** `docker restart fauna_api` · **Git:** `hansolo-dockers` `ae9450d7d` · **Público:** `yespi/fotofauna`
+
+- **`_marine_correct`:** el boost del canal rojo pasa de `** strength` a `** (strength × 0,82)` para evitar salmón/magenta en agua azul; G/B, CLAHE y slider intactos.
+- Paper (EN/ES) §3.4 y `docs/ARQUITECTURA.md` actualizados.
+
+---
+
 ## 2026-08-27 22:00 — FotoFauna: filtros al recorte, Subexp/Sobreexp por histograma, Re-detectar 1:1
 **Deploy:** `docker restart fauna_api` (backend único, sirve PRE+PRO) · **Git:** `hansolo-dockers` + público `yespi/fotofauna`
 

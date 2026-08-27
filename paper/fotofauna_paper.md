@@ -168,6 +168,8 @@ When an active crop rectangle exists, the nine server-side filters run on that *
 
 Subexp. and Sobreexp. set the correction amount from the **luminance histogram of that region** (median, tails, clipped fraction). The intensity slider is a user multiplier on that automatic amount (default 90%), not an absolute correction. Subexp. lifts luminance only, preserving chromaticity (no per-channel LIME).
 
+The Marina filter recovers depth-attenuated reds via adaptive gray-world balancing: per-channel gains nudge mean R, G, and B toward a common target (green and blue scaled more conservatively than red), followed by CLAHE on luminance and a mild unsharp mask. Since August 2026 the red gain uses exponent `strength × 0.82` instead of full `strength`, trimming the salmon/magenta cast that full gray-world recovery can introduce in strongly blue water while keeping natural warm tones.
+
 **Antipartículas (Particle Removal).** A separate, local painting tool — not a global filter — for removing marine snow, backscatter specks, and floating particulate matter from underwater photos: the user paints over the unwanted spots with an adjustable brush, and each stroke is processed and can be undone independently (its own undo stack, separate from the crop tool's). Changes persist across filter switches or navigating away from the editor mid-edit.
 
 ```mermaid
