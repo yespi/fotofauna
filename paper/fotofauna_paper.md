@@ -148,12 +148,41 @@ Users can manually refine or create crops using an interactive editor:
 - Aspect ratio presets (free, 1:1, 4:3, 16:9)
 - Rule of thirds overlay grid
 
-**Image Adjustments:**
-- Brightness (-100 to +100)
-- Contrast (-100 to +100)
-- Saturation (0-200%)
-- Sharpness (0-100%)
-- Reset to original
+**AI-Assisted Vision Filters.** Beyond manual brightness/contrast/saturation sliders, the crop editor exposes eight server-side vision-processing filters, grouped by purpose, each backed by its own image-processing endpoint rather than a simple pixel-value shift:
+
+| Group | Filter | Icon | What it does |
+|-------|--------|------|--------------|
+| Exposición | Auto (`enhance`) | ✨ | One-click automatic exposure/contrast/color balance |
+| Exposición | Subexp. (`underexp`) | 🌙 | Recovers shadow detail without blowing out highlights |
+| Exposición | Sobreexp. (`overexp`) | ☀️ | Softly tames blown highlights |
+| Exposición | Contraste (`contrast`) | ◑ | Stretches contrast with highlight protection |
+| Corrección | Nitidez (`sharpen`) | 🔍 | General sharpening |
+| Corrección | Enfocar (`deblur`) | 🎯 | Recovers sharpness from motion/focus blur without changing global brightness or contrast |
+| Corrección | Bruma (`dehaze`) | ☁️ | Removes the blue/green haze characteristic of underwater photography without altering overall exposure |
+| Color | Marina (`marine`) | 🌊 | Corrects the color cast typical of underwater photos (red/warm-tone loss with depth) |
+| Color | Rojos (`reds`) | 🔴 | Reduces oversaturated reds (common artifact of some underwater strobes/color-correction filters) |
+
+Filters within the same group are mutually exclusive (selecting one deselects the others in that group); filters across different groups can be combined. Each has a default strength (0.5–1.0 on its own internal scale) that the user can adjust or reset.
+
+**Antipartículas (Particle Removal).** A separate, local painting tool — not a global filter — for removing marine snow, backscatter specks, and floating particulate matter from underwater photos: the user paints over the unwanted spots with an adjustable brush, and each stroke is processed and can be undone independently (its own undo stack, separate from the crop tool's). Changes persist across filter switches or navigating away from the editor mid-edit.
+
+```mermaid
+stateDiagram-v2
+    [*] --> CropMode: Open editor
+    CropMode --> CropMode: Drag handles / reposition /\naspect-ratio preset / rule-of-thirds
+    CropMode --> FilterMode: Switch to filters
+    FilterMode --> FilterMode: Toggle exposure/correction/color\nfilter (mutually exclusive per group)
+    FilterMode --> StampMode: Enter antipartículas mode
+    StampMode --> StampMode: Paint strokes\n(own undo stack, Ctrl+Z)
+    StampMode --> FilterMode: Exit stamp mode\n(strokes kept)
+    FilterMode --> CropMode: Back to crop
+    CropMode --> Confirmed: Enter / confirm
+    FilterMode --> Confirmed: Enter / confirm
+    Confirmed --> [*]
+    CropMode --> [*]: Escape / cancel (all changes discarded)
+```
+
+*Figure 2. Editor mode transitions. Crop, filters, and the antipartículas brush are independent modes within the same editor session — switching modes never discards work already done in another mode, only Escape/cancel does.*
 
 **Keyboard Shortcuts:**
 | Key | Action |
@@ -261,7 +290,7 @@ flowchart TD
     N --> O
 ```
 
-*Figure 2. Engine priority and fallback logic. BioFauna is always tried first; the other three engines are consulted only as corroboration or fallback, in that order, never in parallel unless BioFauna's own confidence check triggers a corroboration call.*
+*Figure 3. Engine priority and fallback logic. BioFauna is always tried first; the other three engines are consulted only as corroboration or fallback, in that order, never in parallel unless BioFauna's own confidence check triggers a corroboration call.*
 
 ## 5. Confidence and Auto-Publication
 
@@ -335,7 +364,7 @@ stateDiagram-v2
     ManuallyIdentified --> [*]
 ```
 
-*Figure 3. What an observation's identification status looks like from the outside, independent of the internal scheduling mechanics (BioFauna paper, Figure 4). "StillAwaiting" is not a dead end — the same observation is reconsidered on every subsequent hourly run until it either clears the confidence bar or a person identifies it directly.*
+*Figure 4. What an observation's identification status looks like from the outside, independent of the internal scheduling mechanics (BioFauna paper, Figure 4). "StillAwaiting" is not a dead end — the same observation is reconsidered on every subsequent hourly run until it either clears the confidence bar or a person identifies it directly.*
 
 ### 6.2 Visible Signals
 
@@ -448,7 +477,7 @@ flowchart LR
     H -.->|"informs, does not yet\nautomatically retrain"| I["Cryptic-pair rules,\nabstention thresholds"]
 ```
 
-*Figure 4. Curator feedback loop as currently implemented. The dashed arrow marks a real limitation: curator corrections and the confusion-pair analysis they support currently inform manual updates to abstention rules and calibration (BioFauna paper, §3.5.5, §4.6) rather than an automatic retraining pipeline — closing that loop is listed as future work in both companion papers.*
+*Figure 5. Curator feedback loop as currently implemented. The dashed arrow marks a real limitation: curator corrections and the confusion-pair analysis they support currently inform manual updates to abstention rules and calibration (BioFauna paper, §3.5.5, §4.6) rather than an automatic retraining pipeline — closing that loop is listed as future work in both companion papers.*
 
 ### 10.2 Feedback Integration
 
