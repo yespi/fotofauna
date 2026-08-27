@@ -6,7 +6,7 @@
 
 ## Abstract
 
-FotoFauna is a web-based citizen science platform that integrates automated AI species identification with community validation for Mediterranean marine fauna. The platform combines a region-specific AI engine (YOLOFauna) trained on 525,253 images of 1,369 species with a multi-engine identification pipeline, organism detection via YOLOv8 segmentation, and automated publication to the Minka citizen science network. High-confidence identifications (calibrated probability >= 0.90) are auto-published with 92.2% precision, achieving 100% curator confirmation rate on 21 reviewed observations. The platform has processed 32,686 observations and serves as both a data collection tool and a testbed for AI-assisted identification workflows. This paper describes the platform architecture, identification pipeline, auto-publication system, and the feedback loop between automated and expert-curated identifications.
+FotoFauna is a web-based citizen science platform that integrates automated AI species identification with community validation for Mediterranean marine fauna. The platform combines a region-specific AI engine (**BioFauna**, formerly YOLOFauna — see the companion [BioFauna paper](https://github.com/yespi/biofauna) for full model methodology) — currently a **frozen BioCLIP-2.5 ViT-H** retrieval system over ~762,000 reference embeddings across ~4,709 target species, with test-time augmentation and hierarchical taxonomic abstention — with a multi-engine identification pipeline, organism detection via YOLOv8 segmentation, and automated publication to the Minka citizen science network. High-confidence identifications (calibrated probability >= 0.80, 2026-08-27) are auto-published with an estimated **95.3% precision** at **57.4% coverage** on the current observation-stratified calibration set (n=12,788) — earlier editions of this paper cited a smaller ViT-L-era cohort (92.2% precision / 30% coverage at p>=0.90); both the model and the operating threshold have since changed, see §5.2 and §6.4. The platform has processed tens of thousands of observations and serves as both a data collection tool and a testbed for AI-assisted identification workflows. This paper describes the platform architecture, identification pipeline, auto-publication system, and the feedback loop between automated and expert-curated identifications.
 
 ## 1. Introduction
 
@@ -150,14 +150,32 @@ When multiple organisms are detected in one photo:
 
 FotoFauna queries multiple identification engines with a priority-based fusion strategy.
 
-### 4.1 YOLOFauna (Primary)
+### 4.1 BioFauna (Primary)
 
-- **Model**: BioCLIP ViT-L/14 fine-tuned with QLoRA
-- **Coverage**: 1,369 Mediterranean marine species
-- **Latency**: <1 second
-- **Method**: k-NN (k=25) with cosine similarity on 768-dim embeddings
-- **Calibration**: Multi-level logistic regression (ECE=0.045)
-- **Geographic priors**: GPS-weighted scoring (77,244 points for 1,348 species)
+> Renamed from **YOLOFauna**; earlier drafts of this section described the original QLoRA/ViT-L
+> design. Current production (2026-08-27), see the [BioFauna paper](https://github.com/yespi/biofauna)
+> for full methodology and ablation history:
+
+- **Model**: BioCLIP-2.5 **ViT-H/14**, **frozen** (no fine-tuning in production — QLoRA/LoRA/head
+  sidecar/SupCon fine-tuning attempts on this backbone were all tried and closed; see the
+  BioFauna paper's ablation log)
+- **Coverage**: ~4,709 target Mediterranean marine species (762,082 reference embeddings for
+  species with reliable prototypes)
+- **Latency**: <1 second per photo on an RTX 3060 (12GB)
+- **Method**: k-NN (**k=15**) with cosine similarity on **1024-dim** embeddings, plus a
+  prototype-similarity boost and a multiplicative geographic prior
+- **Test-time augmentation**: each query is embedded together with its own 90% center crop; the
+  two embeddings are averaged and re-normalized before retrieval (+0.21 to +0.75pp species
+  accuracy depending on eval protocol — the only technique that has improved this metric without
+  a data-quality fix)
+- **Calibration**: logistic regression on 10 k-NN features, re-fit against the current
+  TTA-enabled scorer (species 75.97% / genus 81.29% / family 84.90% top-1 on n=12,788
+  observation-stratified held-out photos)
+- **Geographic priors**: GPS-weighted multiplicative scoring (1,386 species with cached
+  coordinates as of 2026-08-27)
+- **Hierarchical abstention**: falls back to genus or family when the top-1/top-2 margin is
+  below threshold and the two candidates share that taxonomic rank, plus a small set of
+  expert-sourced "cannot be told apart by eye" species pairs and genera that always abstain
 
 ### 4.2 iNaturalist Computer Vision (Fallback)
 
@@ -166,13 +184,13 @@ FotoFauna queries multiple identification engines with a priority-based fusion s
 - **Latency**: 2-5 seconds
 - **Authentication**: JWT token, renewed hourly via cron
 - **Rate limiting**: Semaphore with max 5 concurrent requests
-- **Trigger**: When YOLOFauna p_species < 0.90
+- **Trigger**: When BioFauna confidence is below the corroboration threshold (see §6.1)
 
 ### 4.3 Minka Computer Vision (Tertiary)
 
 - **Coverage**: Mediterranean-focused taxa
 - **Latency**: 3-6 seconds
-- **Used when**: Both YOLOFauna and iNaturalist CV are unavailable or low-confidence
+- **Used when**: Both BioFauna and iNaturalist CV are unavailable or low-confidence
 
 ### 4.4 AI Vision Models (Experimental)
 
@@ -183,8 +201,8 @@ FotoFauna queries multiple identification engines with a priority-based fusion s
 ### 4.5 Identification Fusion
 
 The best identification is selected by priority:
-1. YOLOFauna with p_species >= 0.90 -> used directly
-2. YOLOFauna with lower confidence -> compared with iNat CV
+1. BioFauna with confidence above the corroboration threshold -> used directly
+2. BioFauna with lower confidence -> compared with iNat CV
 3. iNat CV as primary fallback
 4. Minka CV as secondary fallback
 5. AI vision models for consensus when engines disagree
@@ -204,12 +222,26 @@ Raw cosine similarity scores are not probabilities. A logistic regression calibr
 
 ### 5.2 Auto-Publication Thresholds
 
-| p_species >= | Precision | Coverage | Action |
+Operating points below reflect the current BioFauna calibration (2026-08-27, n=12,788,
+test-time-augmented production scorer — see the BioFauna paper for methodology). Earlier
+editions of this table used a smaller, ViT-L-era calibration export; those figures are no longer
+current.
+
+| p_species >= | Precision (real) | Coverage | Action |
 |-------------|-----------|----------|--------|
-| 0.90 | 92.2% | 30% | Auto-publish |
-| 0.85 | 92.1% | 38% | Optional auto-publish |
-| 0.80 | 90.5% | 43% | Flag for review |
-| 0.75 | 88.7% | 49% | Manual review recommended |
+| 0.95 | 98.5% | 30.3% | Auto-publish |
+| 0.90 | 96.8% | 43.1% | Auto-publish |
+| **0.85** | **96.1%** | **50.5%** | Auto-publish |
+| **0.80** | **95.3%** | **57.4%** | **Auto-publish — current production threshold (2026-08-27)** |
+| 0.75 | 94.3% | 63.2% | Flag for review |
+| 0.70 | 93.1% | 67.6% | Manual review recommended |
+| 0.60 | 91.0% | 74.6% | Manual review recommended |
+| 0.50 | 88.8% | 79.8% | Manual review recommended |
+
+The production threshold was lowered from 0.90 to 0.80 on 2026-08-27 (see §6.4) to raise
+automation throughput; the estimated precision cost of that move, read directly off this table,
+is ≈1.5 percentage points (96.8%→95.3%) for a ≈33% relative increase in the fraction of
+candidates that clear the bar (43.1%→57.4%).
 
 ### 5.3 Taxonomically-Aware Publication
 
@@ -231,12 +263,13 @@ The Wave system processes batches of uploaded-but-unidentified observations on a
 
 ### 6.1 Configuration Parameters
 
-| Parameter | Default | Description |
+| Parameter | Current | Description |
 |-----------|---------|-------------|
-| WAVE_YOLOFAUNA_MIN_P_SPECIES | 0.90 | Minimum calibrated probability |
-| WAVE_BATCH_SIZE | 200 | Observations per wave |
-| WAVE_COOLDOWN_MIN | 50 | Minutes between waves |
-| WAVE_MAX_WAVES | -1 | Maximum waves (unlimited) |
+| `autoid_schedules.min_confidence` (per-schedule, Postgres) | **80** (was 90) | Minimum calibrated probability to auto-publish; the real gate checked by the hourly wave loop, configurable per schedule rather than a fixed env var |
+| `autoid_schedules.max_per_hour` | 20 | Publication cap per hour |
+| `autoid_schedules.only_unidentified` | true | Minka pool scope: `true` = observations with zero identifications from anyone; `false` = broader "pending confirmation" pool (reserve lever if the strict pool runs dry) |
+| `WAVE_TIMEOUT_S` (code constant) | **1800s** (was 900s) | Wall-clock ceiling per hourly wave run for scanning Minka result pages — not a quota ceiling |
+| `WAVE_BIOFAUNA_MIN_P_SPECIES` (env, legacy name) | 0.90 default | A *separate*, narrower knob used only inside the single-observation iNaturalist-corroboration helper (decides whether BioFauna confidence alone is enough to skip a corroborating iNat CV call); distinct from the per-schedule wave gate above and not what limits wave throughput |
 
 ### 6.2 Wave Processing Pipeline
 
@@ -255,9 +288,30 @@ For each wave:
 All auto-published observations are recorded with:
 - Observation ID and URI
 - Scientific name and confidence
-- Identification source (YOLOFauna, iNat CV, Minka CV)
+- Identification source (BioFauna, iNat CV, Minka CV)
 - Timestamp
 - Publication status
+
+### 6.4 Throughput tuning (2026-08-27)
+
+Measured production volume was running at ~5 publications/hour against the configured cap of
+20/hour — a query against `autoid_history` confirmed 100% of recent publications were sourced
+from BioFauna (not the iNat/Minka CV fallbacks), so the shortfall was a volume problem, not a
+quality or source-mix problem. Two independent causes were found and fixed in the same session:
+
+1. **Scan timeout too short.** `WAVE_TIMEOUT_S` (a wall-clock ceiling on how long the hourly wave
+   spends paging through Minka's "needs identification" results before giving up, independent of
+   whether the hourly publication quota has been reached) was set to 900 seconds — often too
+   short to reach 20 qualifying candidates once the confidence filter had rejected most of the
+   page. Raised to 1800 seconds, which still leaves comfortable margin before the next hourly
+   run.
+2. **Confidence threshold conservative relative to the current calibration.** See §5.2 — lowered
+   from 0.90 to 0.80, trading ≈1.5pp of estimated precision for a ≈33% relative increase in the
+   fraction of candidates that clear the bar.
+
+A third lever — broadening `only_unidentified` from the strict "zero identifications" pool to
+the wider "pending confirmation" pool — is documented and ready but was not exercised, held in
+reserve in case the narrower pool is exhausted after a few hours of running at the new settings.
 
 ## 7. Photo Gallery and Search
 
@@ -398,10 +452,26 @@ The self-hosted architecture, consumer GPU, and open-source model release ensure
 
 FotoFauna demonstrates that AI-assisted citizen science is practical, accurate, and sustainable on consumer hardware. The combination of region-specific AI, calibrated confidence, and expert-curated feedback creates a platform that accelerates biodiversity data collection while maintaining high taxonomic standards. The 100% curator confirmation rate validates the approach, and the open-source release enables replication for other regions and taxonomic groups.
 
+## Post-publication updates
+
+**2026-08-27.** The identification engine described in earlier drafts of §4.1 (BioCLIP ViT-L/14
+with QLoRA, k=25, 768-dim, 1,369 species) has been superseded on every axis by the current
+production system: frozen **BioCLIP-2.5 ViT-H**, k=15, 1024-dim, test-time augmentation, ~4,709
+target species / 762,082 reference embeddings, 75.97%/81.29%/84.90% species/genus/family top-1
+on an observation-stratified held-out set. See the companion
+[BioFauna paper](https://github.com/yespi/biofauna) (`paper/01_biofauna.md`) for the full model
+methodology and a rigorous, dated log of what was tried and why — including three independent
+fine-tuning architectures (LoRA, a frozen-backbone linear head, and a frozen-backbone SupCon
+contrastive re-ranker scoped to the hardest confusion pairs) that were each tested and closed
+without beating the plain k-NN baseline, and test-time augmentation, which is the one technique
+that did. The AutoID wave system's confidence threshold and per-wave scan timeout were also
+retuned this session (§5.2, §6.4) after a throughput audit found the hourly wave publishing at
+roughly a quarter of its configured capacity.
+
 ## References
 
 [References shared with YOLOFauna paper]
 
 ---
 
-*Paper in preparation. Version 2026-08-05.*
+*Paper in preparation. Version 2026-08-27.*
