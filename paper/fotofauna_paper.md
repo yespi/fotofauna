@@ -36,11 +36,38 @@ FotoFauna runs on a self-hosted Ubuntu server with the following components:
 |-----------|-----------|---------|
 | Frontend | Vanilla JS SPA + WebP | User interface, photo upload, gallery |
 | Backend API | FastAPI (Python) | Business logic, authentication, routing |
-| AI Engine | YOLOFauna (BioCLIP + QLoRA) | Species identification |
+| AI Engine | BioFauna (frozen BioCLIP-2.5 ViT-H + k-NN) | Species identification — see [BioFauna paper](https://github.com/yespi/biofauna) |
 | Database | PostgreSQL + PostGIS | Observations, users, species catalog |
 | Proxy | Nginx | SSL termination, caching, routing |
 | GPU | NVIDIA RTX 3060 (12 GB) | AI inference (<1s/image) |
 | Container | Docker Compose | Service orchestration |
+
+### 2.1.1 End-to-End Workflow
+
+```mermaid
+flowchart TD
+    A["User uploads photo(s)"] --> B["EXIF extraction\n(GPS, date/time)"]
+    B --> C["Image preprocessing\n(orientation, resize)"]
+    C --> D["Organism detection\n(YOLOv8 segmentation)"]
+    D --> E{"Organism\nfound?"}
+    E -- "No" --> F["Use full frame\ncrop_source=full"]
+    E -- "Yes" --> G["Crop to bounding box\ncrop_source=yolo"]
+    F --> H["Multi-engine identification (§4)"]
+    G --> H
+    H --> H1["BioFauna: BioCLIP-2.5 ViT-H\n+ TTA + k-NN (k=15)"]
+    H1 --> I{"Calibrated\nconfidence"}
+    I -- "p >= 0.80" --> J["Auto-publish to Minka\n(§5, §6)"]
+    I -- "p < 0.80" --> K["Cross-check: iNaturalist CV\n/ Minka CV fallback (§4.2-4.3)"]
+    K --> L{"Engines\nagree?"}
+    L -- "Yes, high conf" --> J
+    L -- "No / still low" --> M["Manual review queue\n(curator / user)"]
+    M --> N["Curator confirms or corrects"]
+    N --> J
+    J --> O["Published observation\non Minka + FotoFauna gallery"]
+    O --> P["Curator feedback loop (§10)\nfeeds calibration data"]
+```
+
+*Figure 1. End-to-end observation flow, from upload to published, curator-reviewed identification. The AutoID wave system (§6) runs this same identification/publication path in batch, hourly, over previously-uploaded-but-unidentified Minka observations rather than in response to a live upload.*
 
 ### 2.2 Authentication
 
