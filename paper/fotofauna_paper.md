@@ -148,7 +148,7 @@ Users can manually refine or create crops using an interactive editor:
 - Aspect ratio presets (free, 1:1, 4:3, 16:9)
 - Rule of thirds overlay grid
 
-**AI-Assisted Vision Filters.** Beyond manual brightness/contrast/saturation sliders, the crop editor exposes eight server-side vision-processing filters, grouped by purpose, each backed by its own image-processing endpoint rather than a simple pixel-value shift:
+**AI-Assisted Vision Filters.** Beyond manual brightness/contrast/saturation sliders, the crop editor exposes nine server-side vision-processing filters, grouped by purpose, each backed by its own image-processing endpoint rather than a simple pixel-value shift:
 
 | Group | Filter | Icon | What it does |
 |-------|--------|------|--------------|
@@ -163,6 +163,10 @@ Users can manually refine or create crops using an interactive editor:
 | Color | Rojos (`reds`) | 🔴 | Reduces oversaturated reds (common artifact of some underwater strobes/color-correction filters) |
 
 Filters within the same group are mutually exclusive (selecting one deselects the others in that group); filters across different groups can be combined. Each has a default strength (0.5–1.0 on its own internal scale) that the user can adjust or reset.
+
+When an active crop rectangle exists, the nine server-side filters run on that **region** (not the full frame); the rest of the photo is left unchanged. This is the cave / subject-in-shadow case: crop the organism, then the filter analyses that region.
+
+Subexp. and Sobreexp. set the correction amount from the **luminance histogram of that region** (median, tails, clipped fraction). The intensity slider is a user multiplier on that automatic amount (default 90%), not an absolute correction. Subexp. lifts luminance only, preserving chromaticity (no per-channel LIME).
 
 **Antipartículas (Particle Removal).** A separate, local painting tool — not a global filter — for removing marine snow, backscatter specks, and floating particulate matter from underwater photos: the user paints over the unwanted spots with an adjustable brush, and each stroke is processed and can be undone independently (its own undo stack, separate from the crop tool's). Changes persist across filter switches or navigating away from the editor mid-edit.
 

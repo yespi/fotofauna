@@ -148,7 +148,7 @@ Los usuarios pueden refinar o crear recortes manualmente usando un editor intera
 - Presets de relación de aspecto (libre, 1:1, 4:3, 16:9)
 - Rejilla superpuesta de la regla de los tercios
 
-**Filtros de visión asistidos por IA.** Más allá de los deslizadores manuales de brillo/contraste/saturación, el editor de recorte expone ocho filtros de procesado de visión en el servidor, agrupados por propósito, cada uno respaldado por su propio endpoint de procesado de imagen en vez de un simple desplazamiento de valores de píxel:
+**Filtros de visión asistidos por IA.** Más allá de los deslizadores manuales de brillo/contraste/saturación, el editor de recorte expone nueve filtros de procesado de visión en el servidor, agrupados por propósito, cada uno respaldado por su propio endpoint de procesado de imagen en vez de un simple desplazamiento de valores de píxel:
 
 | Grupo | Filtro | Icono | Qué hace |
 |-------|--------|------|--------------|
@@ -163,6 +163,10 @@ Los usuarios pueden refinar o crear recortes manualmente usando un editor intera
 | Color | Rojos (`reds`) | 🔴 | Reduce los rojos sobresaturados (artefacto habitual de algunos flashes/filtros de corrección de color submarinos) |
 
 Los filtros dentro del mismo grupo son mutuamente excluyentes (seleccionar uno deselecciona los demás de ese grupo); los filtros de grupos distintos se pueden combinar. Cada uno tiene una intensidad por defecto (0,5–1,0 en su propia escala interna) que el usuario puede ajustar o restablecer.
+
+Cuando existe un recorte activo, los nueve filtros de servidor se aplican a ese **rectángulo** (no al fotograma completo); el resto de la foto permanece inalterado. Este es el caso de una cueva o de un sujeto en sombra: se recorta el organismo y el filtro analiza esa región.
+
+Subexp. y Sobreexp. fijan la cantidad de corrección a partir del **histograma de luminancia de esa región** (mediana, colas, fracción recortada). El deslizador de intensidad es un multiplicador del usuario sobre esa cantidad automática (por defecto 90 %), no una corrección absoluta. Subexp. eleva solo la luminancia, preservando la cromaticidad (sin LIME por canal).
 
 **Antipartículas (eliminación de partículas).** Una herramienta de pintado local aparte — no un filtro global — para eliminar nieve marina, motas de retrodispersión, y partículas flotantes de las fotos submarinas: el usuario pinta sobre las manchas no deseadas con un pincel ajustable, y cada trazo se procesa y se puede deshacer de forma independiente (su propia pila de deshacer, separada de la de la herramienta de recorte). Los cambios persisten al cambiar de filtro o al salir del editor a mitad de edición.
 

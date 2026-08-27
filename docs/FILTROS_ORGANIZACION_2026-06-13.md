@@ -1,5 +1,7 @@
 # FotoFauna — Organización filtros (13-jun-2026)
 
+> **2026-08-27.** Los 9 filtros de servidor se aplican al **recorte activo** cuando existe (no al fichero completo); el resto de la foto no cambia. Subexp./Sobreexp. auto-escalan la corrección a partir del histograma de luminancia de esa región (el slider es un multiplicador, default 90 %).
+
 **Build:** `2e42ac2a` (PRO) · Backend `vision_image.py`  
 **Changelog completo:** [`CHANGELOG.md`](CHANGELOG.md) (entrada 2026-06-13)
 

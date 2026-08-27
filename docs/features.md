@@ -23,7 +23,7 @@ Before identification, the system optionally detects and crops the organism from
 - Crops stored as temporary files for the identification pipeline
 
 ### 1.3 Manual Crop Tool
-Users can manually adjust the crop region with drag handles, click-and-drag repositioning, and real-time preview.
+Users can manually adjust the crop region with drag handles, click-and-drag repositioning, and real-time preview. Server-side vision filters apply to the active crop rectangle when one exists, not the full frame.
 
 ### 1.4 Image Preprocessing
 Resize to 224x224 for BioCLIP, EXIF rotation, thumbnail generation (400px).

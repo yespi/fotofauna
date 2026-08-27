@@ -1,5 +1,17 @@
 # FotoFauna — Changelog (rolling)
 
+## 2026-08-27 22:00 — FotoFauna: filtros al recorte, Subexp/Sobreexp por histograma, Re-detectar 1:1
+**Deploy:** `docker restart fauna_api` (backend único, sirve PRE+PRO) · **Git:** `hansolo-dockers` + público `yespi/fotofauna`
+
+Caché frontend `use-filtros.js?v=20260827c`. `fauna_api` reiniciado y healthy.
+
+- **Filtros al recorte activo:** los 9 filtros de servidor (enhance, sharpen, deblur, dehaze, underexp, overexp, contrast, marine, reds) se aplican al rectángulo de recorte activo (píxeles RAW, sin ajustes CSS incrustados). El resto del fotograma no cambia; el resultado se recompone en `file_filtered` a tamaño completo. Sin recorte → foto completa como antes. Caso cueva: recortar el sujeto en sombra y Subexp. analiza esa región.
+- **Subexp./Sobreexp. por histograma:** la cantidad de corrección sale de la severidad del histograma de luminancia (mediana, p10/p90, fracción recortada) × slider de intensidad (multiplicador; default 0,90 = 90 % de la cantidad automática). Subexp. eleva solo luma (croma intacta; no LIME por canal). Sobreexp. es casi no-op en fotos oscuras.
+- **Re-detectar 1:1:** 1 celda seleccionada = 1 foto (el miembro visible del grupo, no los hijos). La barra de progreso cuenta ids únicos de la oleada, no longitudes de batch acumuladas. El toast coincide.
+- **Auto-asignar BioFauna en escritorio:** `/vision/inat-score` `_biofauna_suggestion` ya no se corta por debajo del umbral jerárquico ~0,875; piso 0,15 para que el panel reciba top-k. El slider de Ajustes (`getAutoIdMinConfidence`) decide el auto-asignar. AutoID Minka / WAVE_* intactos.
+- **Duplicar:** candado de 2 s + toast; la copia recibe el recorte de fotograma completo (ya no orig+_1+_2 por doble clic).
+
+
 ## 2026-08-15 11:xx — FotoFauna/BioQuest: cascadas LLM saneadas (modelos muertos + Gemini fuera)
 **Deploy:** `docker restart fauna_api` (backend único, sirve PRE+PRO) · **Git:** `hansolo-dockers`
 
