@@ -6,6 +6,15 @@
 
 ## Resumen
 
+> **Nota editorial (12-sep-2026):** las cifras de calibración citadas en este paper (n=12.788,
+> 27-ago-2026) son anteriores a una cosecha del rezago de evaluación y una campaña de calidad
+> fotográfica en fanerógamas documentadas en el paper compañero de BioFauna, §4.18–§4.19
+> (exactitud de especie actual **86,85%** out-of-sample sobre n=18.273; especies sin ninguna
+> cobertura de evaluación reducidas de 1.267 a 64 de 2.989; *Posidonia oceanica* desplegada a
+> producción). La tabla de precisión/cobertura de AutoID de más abajo (§5.2) aún no se ha
+> recalculado contra la calibración actual y debe leerse como histórica hasta su refresco —
+> ver `docs/STATUS.md` en el repo compañero para el estado operativo en vivo.
+
 FotoFauna es una plataforma de ciencia ciudadana basada en web que integra la identificación automática de especies mediante IA con validación comunitaria para la fauna marina mediterránea. La plataforma combina un motor de IA específico de la región (**BioFauna** — ver el [paper compañero de BioFauna](https://github.com/yespi/biofauna) para la metodología completa del modelo), actualmente un sistema de recuperación **BioCLIP-2.5 ViT-H congelado** con aumento en tiempo de inferencia sobre 762.082 embeddings de referencia en 4.709 especies objetivo y abstención taxonómica jerárquica, con una tubería de identificación multi-motor, detección de organismo vía segmentación YOLOv8, y publicación automática en la red de ciencia ciudadana Minka. Las identificaciones de alta confianza (probabilidad calibrada ≥ 0,80) se auto-publican con una precisión estimada del **95,3%** con una **cobertura del 57,4%** sobre el conjunto de calibración actual estratificado por observación (n=12.788, §5.2). La plataforma ha procesado decenas de miles de observaciones y sirve tanto de herramienta de recolección de datos como de banco de pruebas para flujos de trabajo de identificación asistida por IA. Este paper describe la arquitectura de la plataforma, la tubería de identificación, el sistema de auto-publicación desde la perspectiva del usuario final, y el bucle de retroalimentación entre las identificaciones automáticas y las curadas por expertos; los detalles técnicos del modelo de identificación y del motor de programación de AutoID se cubren en profundidad en el paper compañero de BioFauna.
 
 ## 1. Introducción

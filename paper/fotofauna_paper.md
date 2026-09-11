@@ -6,6 +6,15 @@
 
 ## Abstract
 
+> **Editorial note (2026-09-12):** the calibration figures cited in this paper (n=12,788,
+> 2026-08-27) predate a subsequent evaluation-backlog harvest and seagrass photo-quality
+> campaign documented in the companion BioFauna paper, §4.18–§4.19 (current species accuracy
+> **86.85%** out-of-sample on n=18,273; species without any evaluation coverage reduced from
+> 1,267 to 64 of 2,989; *Posidonia oceanica* cut over to production). The AutoID precision/coverage
+> operating-point table below (§5.2) has not yet been recomputed against the current calibration
+> and should be read as historical until refreshed — see `docs/STATUS.md` in the companion repo
+> for the live operational snapshot.
+
 FotoFauna is a web-based citizen science platform that integrates automated AI species identification with community validation for Mediterranean marine fauna. The platform combines a region-specific AI engine (**BioFauna** — see the companion [BioFauna paper](https://github.com/yespi/biofauna) for full model methodology), currently a **frozen BioCLIP-2.5 ViT-H** retrieval system with test-time augmentation over 762,082 reference embeddings across 4,709 target species and hierarchical taxonomic abstention, with a multi-engine identification pipeline, organism detection via YOLOv8 segmentation, and automated publication to the Minka citizen science network. High-confidence identifications (calibrated probability ≥ 0.80) are auto-published with an estimated **95.3% precision** at **57.4% coverage** on the current observation-stratified calibration set (n=12,788, §5.2). The platform has processed tens of thousands of observations and serves as both a data collection tool and a testbed for AI-assisted identification workflows. This paper describes the platform architecture, identification pipeline, auto-publication system from the end user's perspective, and the feedback loop between automated and expert-curated identifications; the technical internals of the identification model and the AutoID scheduling engine are covered in depth in the companion BioFauna paper.
 
 ## 1. Introduction
