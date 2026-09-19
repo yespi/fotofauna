@@ -1,5 +1,11 @@
 # FotoFauna — Changelog (rolling)
 
+## 2026-09-19 — BioFauna Fotos (admin bulk download)
+
+Live on https://fotofauna.yespi.es (admin rail 📦). Independent ZIP parts ≤ 2 GB, CSV per species folder, merge script, README with licences. See [`BIOFAUNA_FOTOS.md`](BIOFAUNA_FOTOS.md).
+
+---
+
 ## 2026-08-27 22:20 — Filtro Marina: menos rojo (gray-world ×0,82)
 **Deploy:** `docker restart fauna_api` · **Git:** `hansolo-dockers` `ae9450d7d` · **Público:** `yespi/fotofauna`
 

@@ -45,6 +45,10 @@ User → FotoFauna Web → BioFauna AI → Identification
 
 See [paper/yolofauna.md](https://github.com/yespi/yolofauna/blob/master/paper/02_fotofauna.md) for the full research paper.
 
+## BioFauna Fotos (admin export)
+
+Administrators can download the BioFauna photo catalog from FotoFauna as independent ZIP files (≤ 2 GB), with a CSV inside each species folder. See [docs/BIOFAUNA_FOTOS.md](docs/BIOFAUNA_FOTOS.md).
+
 ## License
 
 MIT — https://github.com/yespi/fotofauna

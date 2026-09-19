@@ -34,6 +34,7 @@ Subes fotos de fauna, la IA recorta e identifica la especie y las publica como o
 | Doc | Qué es |
 |-----|--------|
 | [`CHANGELOG.md`](CHANGELOG.md) | Changelog rolling por sesión (jun-2026 →) |
+| [`BIOFAUNA_FOTOS.md`](BIOFAUNA_FOTOS.md) | Admin bulk download of the BioFauna photo catalog |
 | [`FOTOFAUNA_ANALISIS.md`](FOTOFAUNA_ANALISIS.md) | Auditoría técnica 2026-08-02. **Abiertos: T9 y T11**; el resto (T1–T8, T10, T12) ya está aplicado — leer la cabecera antes de tocar nada |
 | [`FOTOFAUNA_ANALISIS_YESPI.md`](FOTOFAUNA_ANALISIS_YESPI.md) | Análisis UX/producto: 20 mejoras priorizadas |
 | [`GRUPOS_IDENTIFICACION.md`](GRUPOS_IDENTIFICACION.md) | Política de identificación en grupos + reglas «NO reintroducir» |
