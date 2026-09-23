@@ -17,6 +17,7 @@ Subes fotos de fauna, la IA recorta e identifica la especie y las publica como o
 ### Arquitectura y referencia
 | Doc | Qué es |
 |-----|--------|
+| [`API.md`](API.md) | **API HTTP** (auth, visión, BioFauna, Academy, Minka, ejemplos curl) |
 | [`ARQUITECTURA.md`](ARQUITECTURA.md) | Contenedor único, PRE/PRO, clientes escritorio y móvil, diagrama de servicios |
 | [`INTERFACES_Y_LOGICA.md`](INTERFACES_Y_LOGICA.md) | Pantallas, composables y lógica de la aplicación |
 | [`BACKEND_PRE_PRO_SPLIT.md`](BACKEND_PRE_PRO_SPLIT.md) | Separación de backend PRE/PRO (compartida con BioQuest) |
