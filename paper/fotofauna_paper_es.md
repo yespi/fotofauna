@@ -6,16 +6,19 @@
 
 ## Resumen
 
-> **Nota editorial (12-sep-2026):** las cifras de calibración citadas en este paper (n=12.788,
-> 27-ago-2026) son anteriores a una cosecha del rezago de evaluación y una campaña de calidad
-> fotográfica en fanerógamas documentadas en el paper compañero de BioFauna, §4.18–§4.19
-> (exactitud de especie actual **86,85%** out-of-sample sobre n=18.273; especies sin ninguna
-> cobertura de evaluación reducidas de 1.267 a 64 de 2.989; *Posidonia oceanica* desplegada a
-> producción). La tabla de precisión/cobertura de AutoID de más abajo (§5.2) aún no se ha
-> recalculado contra la calibración actual y debe leerse como histórica hasta su refresco —
-> ver `docs/STATUS.md` en el repo compañero para el estado operativo en vivo.
+> **Nota editorial (23-sep-2026):** las cifras de calibración de §5.2 (n=12.788, 27-ago-2026) son
+> históricas. El 23-sep-2026 el proyecto compañero BioFauna descubrió que la mitad de sus filas de
+> evaluación eran copias de fotos de la galería (paper de BioFauna, O18); sin ellas el identificador
+> acierta el **88,11%** de especie fuera de muestra (n=12.373) y ~80% en observaciones recientes
+> research grade. El calibrador reajustado sobre ese conjunto limpio da **97,0% de precisión con
+> 80,6% de cobertura** en el umbral de AutoID p≥0,80 (partición disjunta por especie, conjunto
+> cerrado). Galería viva: 1.072.233 embeddings / 4.705 especies, voto k-NN con tope de 3 por
+> especie. El ritmo de AutoID se configura desde el admin de FotoFauna (ahora 30/h y 1.000/día):
+> al llegar al tope horario se pausa hasta la hora siguiente en vez de disparar el cortocircuito;
+> solo las alertas de calidad (confianza baja, un usuario inundando, spam de álbum) lo detienen.
+> Estado en vivo: `docs/STATUS.md` del repo de BioFauna.
 
-FotoFauna es una plataforma de ciencia ciudadana basada en web que integra la identificación automática de especies mediante IA con validación comunitaria para la fauna marina mediterránea. La plataforma combina un motor de IA específico de la región (**BioFauna** — ver el [paper compañero de BioFauna](https://github.com/yespi/biofauna) para la metodología completa del modelo), actualmente un sistema de recuperación **BioCLIP-2.5 ViT-H congelado** con aumento en tiempo de inferencia sobre 762.082 embeddings de referencia en 4.709 especies objetivo y abstención taxonómica jerárquica, con una tubería de identificación multi-motor, detección de organismo vía segmentación YOLOv8, y publicación automática en la red de ciencia ciudadana Minka. Las identificaciones de alta confianza (probabilidad calibrada ≥ 0,80) se auto-publican con una precisión estimada del **95,3%** con una **cobertura del 57,4%** sobre el conjunto de calibración actual estratificado por observación (n=12.788, §5.2). La plataforma ha procesado decenas de miles de observaciones y sirve tanto de herramienta de recolección de datos como de banco de pruebas para flujos de trabajo de identificación asistida por IA. Este paper describe la arquitectura de la plataforma, la tubería de identificación, el sistema de auto-publicación desde la perspectiva del usuario final, y el bucle de retroalimentación entre las identificaciones automáticas y las curadas por expertos; los detalles técnicos del modelo de identificación y del motor de programación de AutoID se cubren en profundidad en el paper compañero de BioFauna.
+FotoFauna es una plataforma de ciencia ciudadana basada en web que integra la identificación automática de especies mediante IA con validación comunitaria para la fauna marina mediterránea. La plataforma combina un motor de IA específico de la región (**BioFauna** — ver el [paper compañero de BioFauna](https://github.com/yespi/biofauna) para la metodología completa del modelo), actualmente un sistema de recuperación **BioCLIP-2.5 ViT-H congelado** con aumento en tiempo de inferencia sobre 1.072.233 embeddings de referencia en 4.705 especies y abstención taxonómica jerárquica, con una tubería de identificación multi-motor, detección de organismo vía segmentación YOLOv8, y publicación automática en la red de ciencia ciudadana Minka. Las identificaciones de alta confianza (probabilidad calibrada ≥ 0,80) se auto-publican con una precisión estimada del **95,3%** con una **cobertura del 57,4%** sobre el conjunto de calibración actual estratificado por observación (n=12.788, §5.2). La plataforma ha procesado decenas de miles de observaciones y sirve tanto de herramienta de recolección de datos como de banco de pruebas para flujos de trabajo de identificación asistida por IA. Este paper describe la arquitectura de la plataforma, la tubería de identificación, el sistema de auto-publicación desde la perspectiva del usuario final, y el bucle de retroalimentación entre las identificaciones automáticas y las curadas por expertos; los detalles técnicos del modelo de identificación y del motor de programación de AutoID se cubren en profundidad en el paper compañero de BioFauna.
 
 ## 1. Introducción
 
@@ -233,7 +236,7 @@ FotoFauna consulta múltiples motores de identificación con una estrategia de f
 BioFauna es el motor de identificación propio de FotoFauna (ver el [paper compañero de BioFauna](https://github.com/yespi/biofauna) para la metodología completa y su historial de ablaciones):
 
 - **Modelo**: BioCLIP-2.5 **ViT-H/14**, **congelado** (sin ajuste fino en producción — los intentos de ajuste fino QLoRA/LoRA/cabeza sidecar/SupCon sobre este backbone se probaron todos y se cerraron; ver el registro de ablaciones del paper de BioFauna)
-- **Cobertura**: ~4.709 especies marinas mediterráneas objetivo (762.082 embeddings de referencia para especies con prototipos fiables)
+- **Cobertura**: 2.985 taxones del catálogo, 4.705 especies en galería (1.072.233 embeddings de referencia, 23-sep-2026)
 - **Latencia**: <1 segundo por foto en una RTX 3060 (12GB)
 - **Método**: k-NN (**k=15**) con similitud coseno sobre embeddings de **1024 dim**, más un refuerzo por similitud a prototipo y un prior geográfico multiplicativo
 - **Aumento en tiempo de inferencia**: cada consulta se embebe junto a su propio recorte central al 90%; los dos embeddings se promedian y renormalizan antes de la recuperación (+0,21 a +0,75pp de acierto de especie según el protocolo de evaluación — la única técnica que ha mejorado esta métrica sin un arreglo de calidad de datos)
@@ -411,7 +414,7 @@ Página de observación completa con:
 
 ### 8.1 Fichas de especie
 
-Cada una de las ~4.709 especies objetivo tiene una ficha de detalle con:
+Cada una de las 2.985 especies del catálogo tiene una ficha de detalle con:
 - Galería de fotos representativas
 - Nombres científico y comunes (catalán/español/inglés)
 - Taxonomía validada por WoRMS

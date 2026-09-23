@@ -1,5 +1,14 @@
 # FotoFauna — Changelog (rolling)
 
+## 2026-09-23 — BioFauna evaluation leak fixed; AutoID throughput without blocking
+
+- **AutoID (22-sep):** schedule raised to **30/h and 1,000/day** from the admin planner (`autoid_schedules`, the table behind the FotoFauna AutoID page). The guard (`autoid_guard.py`) now treats `burst_hour`/`burst_day` as **warnings**: reaching the hourly cap simply stops that hour and the next hour continues — the planner is never disabled for volume. Quality trips (low confidence, one user flooding, album spam) remain critical. **Deploy:** `docker restart fauna_api`.
+- **BioFauna numbers shown in FotoFauna:** the companion identifier found that half of its evaluation set were copies of gallery photos (BioFauna paper O18). Admin panel accuracy now comes from the leak-free set: **88.11%** species (n=12,373). The calibrator was refit (p≥0.80 → 97.0% precision / 80.6% coverage, closed-set), so AutoID confidences are slightly more conservative than on 22-sep.
+- **BioFauna:** k-NN vote capped at 3 per species since 22-sep 07:17 (McNemar +1.13 pp, 177 species improve / 70 worsen).
+- Paper (EN/ES): editorial note and abstract figures refreshed.
+
+---
+
 ## 2026-09-19 — BioFauna Fotos (admin bulk download)
 
 Live on https://fotofauna.yespi.es (admin rail 📦). Independent ZIP parts ≤ 2 GB, CSV per species folder, merge script, README with licences. See [`BIOFAUNA_FOTOS.md`](BIOFAUNA_FOTOS.md).

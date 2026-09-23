@@ -6,16 +6,18 @@
 
 ## Abstract
 
-> **Editorial note (2026-09-12):** the calibration figures cited in this paper (n=12,788,
-> 2026-08-27) predate a subsequent evaluation-backlog harvest and seagrass photo-quality
-> campaign documented in the companion BioFauna paper, §4.18–§4.19 (current species accuracy
-> **86.85%** out-of-sample on n=18,273; species without any evaluation coverage reduced from
-> 1,267 to 64 of 2,989; *Posidonia oceanica* cut over to production). The AutoID precision/coverage
-> operating-point table below (§5.2) has not yet been recomputed against the current calibration
-> and should be read as historical until refreshed — see `docs/STATUS.md` in the companion repo
-> for the live operational snapshot.
+> **Editorial note (2026-09-23):** the calibration figures in §5.2 (n=12,788, 2026-08-27) are
+> historical. On 2026-09-23 the companion BioFauna project found that half of its evaluation rows
+> were copies of gallery photos (BioFauna paper, O18); after removing them the identifier scores
+> **88.11%** species out-of-sample (n=12,373) and ~80% on recent research-grade observations. The
+> calibrator refit on that leak-free set gives **97.0% precision at 80.6% coverage** at the p≥0.80
+> AutoID threshold (species-disjoint split, closed-set). Live gallery: 1,072,233 embeddings /
+> 4,705 species, k-NN vote capped at 3 per species. AutoID throughput is configured from the
+> FotoFauna admin (currently 30/h and 1,000/day): reaching the hourly cap pauses publication until
+> the next hour instead of tripping the circuit breaker; only quality alerts (low confidence, one
+> user flooding, album spam) still stop it. Live snapshot: `docs/STATUS.md` in the BioFauna repo.
 
-FotoFauna is a web-based citizen science platform that integrates automated AI species identification with community validation for Mediterranean marine fauna. The platform combines a region-specific AI engine (**BioFauna** — see the companion [BioFauna paper](https://github.com/yespi/biofauna) for full model methodology), currently a **frozen BioCLIP-2.5 ViT-H** retrieval system with test-time augmentation over 762,082 reference embeddings across 4,709 target species and hierarchical taxonomic abstention, with a multi-engine identification pipeline, organism detection via YOLOv8 segmentation, and automated publication to the Minka citizen science network. High-confidence identifications (calibrated probability ≥ 0.80) are auto-published with an estimated **95.3% precision** at **57.4% coverage** on the current observation-stratified calibration set (n=12,788, §5.2). The platform has processed tens of thousands of observations and serves as both a data collection tool and a testbed for AI-assisted identification workflows. This paper describes the platform architecture, identification pipeline, auto-publication system from the end user's perspective, and the feedback loop between automated and expert-curated identifications; the technical internals of the identification model and the AutoID scheduling engine are covered in depth in the companion BioFauna paper.
+FotoFauna is a web-based citizen science platform that integrates automated AI species identification with community validation for Mediterranean marine fauna. The platform combines a region-specific AI engine (**BioFauna** — see the companion [BioFauna paper](https://github.com/yespi/biofauna) for full model methodology), currently a **frozen BioCLIP-2.5 ViT-H** retrieval system with test-time augmentation over 1,072,233 reference embeddings across 4,705 species and hierarchical taxonomic abstention, with a multi-engine identification pipeline, organism detection via YOLOv8 segmentation, and automated publication to the Minka citizen science network. High-confidence identifications (calibrated probability ≥ 0.80) are auto-published with an estimated **97.0% precision** at **80.6% coverage** on the leak-free calibration set (2026-09-23; n=12,373, species-disjoint test split — see the editorial note; §5.2 keeps the August table for history). The platform has processed tens of thousands of observations and serves as both a data collection tool and a testbed for AI-assisted identification workflows. This paper describes the platform architecture, identification pipeline, auto-publication system from the end user's perspective, and the feedback loop between automated and expert-curated identifications; the technical internals of the identification model and the AutoID scheduling engine are covered in depth in the companion BioFauna paper.
 
 ## 1. Introduction
 
@@ -235,8 +237,8 @@ BioFauna is FotoFauna's own identification engine (see the companion [BioFauna p
 - **Model**: BioCLIP-2.5 **ViT-H/14**, **frozen** (no fine-tuning in production — QLoRA/LoRA/head
   sidecar/SupCon fine-tuning attempts on this backbone were all tried and closed; see the
   BioFauna paper's ablation log)
-- **Coverage**: ~4,709 target Mediterranean marine species (762,082 reference embeddings for
-  species with reliable prototypes)
+- **Coverage**: 2,985 catalog taxa, 4,705 gallery species (1,072,233 reference embeddings,
+  2026-09-23)
 - **Latency**: <1 second per photo on an RTX 3060 (12GB)
 - **Method**: k-NN (**k=15**) with cosine similarity on **1024-dim** embeddings, plus a
   prototype-similarity boost and a multiplicative geographic prior
@@ -429,7 +431,7 @@ Full observation page with:
 
 ### 8.1 Species Cards
 
-Each of the ~4,709 target species has a detail card with:
+Each of the 2,985 catalog species has a detail card with:
 - Representative photo gallery
 - Scientific and common names (Catalan/Spanish/English)
 - WoRMS-validated taxonomy
