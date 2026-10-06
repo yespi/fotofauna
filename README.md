@@ -1,7 +1,7 @@
 # FotoFauna — AI-Assisted Mediterranean Marine Species Identification
 
 [![Status](https://img.shields.io/badge/status-active-brightgreen)]()
-[![Species](https://img.shields.io/badge/species-1,369-blue)]()
+[![Species](https://img.shields.io/badge/species-4,543-blue)]()
 [![Platform](https://img.shields.io/badge/platform-Minka-orange)]()
 
 **Live**: https://fotofauna.yespi.es | **AI Engine**: [BioFauna](https://github.com/yespi/biofauna) (formerly YOLOFauna)
@@ -10,6 +10,8 @@
 
 FotoFauna is a citizen science platform for the Mediterranean Sea. Users upload photographs of marine fauna and receive instant AI-powered species identifications via **BioFauna** (BioCLIP-2.5 ViT-H + k-NN). High-confidence predictions are auto-published to the Minka citizen science network, where professional taxonomists validate the identifications.
 
+> **Oct 2026 (6 Oct):** BioFauna index 1,132,767 vectors / 4,543 species, panel 82.85%; FotoFauna PRE→PRO deployed. See [BioFauna status](https://github.com/yespi/biofauna/blob/master/docs/STATUS.md).
+>
 > **Aug 2026:** Active remediation — consolidating SSD + HDD photo archive into embeddings to recover accuracy on rich species. See [BioFauna status](https://github.com/yespi/biofauna/blob/master/docs/STATUS.md).
 
 ## How It Works
@@ -23,9 +25,9 @@ FotoFauna is a citizen science platform for the Mediterranean Sea. Users upload 
 
 | Metric | Value |
 |--------|-------|
-| Species in model | ~3,000 (Aug 2026 remediation) |
-| Training / gallery images | ~900K total (SSD + archive) |
-| Tier-1 species accuracy (remediation OOS) | ~64% |
+| Species in model | 4,543 (2026-10-06; 1,132,767 gallery embeddings) |
+| Training / gallery images | ~1.22M on disk (SSD + archive); 1.13M embedded |
+| Field panel species accuracy (out-of-sample) | 82.85% (78,145 rows; 80.63% on 54,878 leak-free rows before the latest promotions) |
 | Published baseline (2026 paper cohort) | 71.7% |
 | High-conf precision (p≥0.90) | 92.2% |
 | Auto-published to Minka | 100+ |

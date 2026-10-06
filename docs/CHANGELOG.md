@@ -1,38 +1,257 @@
 # FotoFauna — Changelog (rolling)
 
-## 2026-09-23 — BioFauna evaluation leak fixed; AutoID throughput without blocking
+## 2026-10-06 — FotoFauna: PRE → PRO (orden de Gustavo)
+- `deploy-to-pro.sh` ejecutado (rsync `public-pre/` → `public/`, bump de caché, parche de rutas `/pre/`→`/`, SEO: 401 páginas de especie + 6 temas + sitemap). Smoke PRO: OK (18 comprobaciones). Backup previo en `/mnt/docker/backups/fotofauna/` (rotación 3). Backend compartido sin reinicio (`fauna_api` se recrea solo a diario 00:30/01:00).
+- Revertir: `unzip -o <último backup_fotofauna_*.zip> -d /mnt/docker/ecosistema-fauna/webapp/public/`.
 
-- **AutoID (22-sep):** schedule raised to **30/h and 1,000/day** from the admin planner (`autoid_schedules`, the table behind the FotoFauna AutoID page). The guard (`autoid_guard.py`) now treats `burst_hour`/`burst_day` as **warnings**: reaching the hourly cap simply stops that hour and the next hour continues — the planner is never disabled for volume. Quality trips (low confidence, one user flooding, album spam) remain critical. **Deploy:** `docker restart fauna_api`.
-- **BioFauna numbers shown in FotoFauna:** the companion identifier found that half of its evaluation set were copies of gallery photos (BioFauna paper O18). Admin panel accuracy now comes from the leak-free set: **88.11%** species (n=12,373). The calibrator was refit (p≥0.80 → 97.0% precision / 80.6% coverage, closed-set), so AutoID confidences are slightly more conservative than on 22-sep.
-- **BioFauna:** k-NN vote capped at 3 per species since 22-sep 07:17 (McNemar +1.13 pp, 177 species improve / 70 worsen).
-- Paper (EN/ES): editorial note and abstract figures refreshed.
+## 2026-10-06 — AutoID / BioFauna (documentación)
+- Regla de hermanas de AutoID retirada (4-oct); rescate 2 activo; recorte en pausa; género p≥0,95; `fauna_api` se recrea a las 00:30 y 01:00 (renew-inat-token).
+- Índice BioFauna: promociones del 5-oct (combo limpio) y 6-oct (lotes 01+02); OOS panel 82,85 %.
+- Sin cambios de FotoFauna en PRO; FF sigue en PRE a la espera de «súbelo a PRO».
+
+
+## 2026-10-04 10:00 — FotoFauna
+**Build PRE:** `13eff6ba` · **Origen:** sync automático (Chewie)
+
+- Cambios en working tree pendientes de commit (sync automático).
+
+
+## 2026-10-03 21:00 — FotoFauna
+**Build PRE:** `c17252a9` · **Origen:** sync automático (Chewie)
+
+- Cambios en working tree pendientes de commit (sync automático).
+
+
+## 2026-10-03 20:30 — FotoFauna
+**Build PRE:** `746db163` · **Origen:** sync automático (Chewie)
+
+- Cambios en working tree pendientes de commit (sync automático).
+
+
+## 2026-10-03 20:00 — FotoFauna
+**Build PRE:** `9d179ce8` · **Origen:** sync automático (Chewie)
+
+- Cambios en working tree pendientes de commit (sync automático).
+
+
+## 2026-10-03 19:30 — FotoFauna
+**Build PRE:** `811ae400` · **Origen:** sync automático (Chewie)
+
+- Cambios en working tree pendientes de commit (sync automático).
+
+
+## 2026-10-03 — FotoFauna: publicar no modifica la sesión, deshacer/cancelar subida, identificación con foto completa, log de sesión, reinicio rápido
+
+**Código:** `ecosistema-fauna` (`webapp/public-pre` → `deploy-to-pro.sh`, backups en `/mnt/new/backups/ff_dup_aviso_20261003/` y `/mnt/docker/backups/fotofauna/backup_fotofauna_20261003_*.zip`) · `fauna_api` · `docker-compose.yml`.
+
+**Incidente (21:41 CEST):** tras recargar la sesión y pulsar *Subir*, se publicaron 13 observaciones en Minka (883199–883211); varias llevaban una especie que el usuario había dejado sin identificar. Causa: `resolvePhotoSpeciesForPublish` (desde jun-2026) publicaba la sugerencia **pendiente** (sin confirmar) con cualquier confianza ≥ 15 %; mientras el servidor descartaba sugerencias < 0,83 el fallo no se veía, y al restaurar el piso 0,15 (`vision_routes.py`) afloró. Despublicadas por erróneas: 883201, 883204, 883207, 883208 (las demás se dejaron; 883202 y 883209 dudosas). Regla de Gustavo resultante: **publicar sube exactamente lo que hay en pantalla**.
+
+- **Publicar no modifica la sesión** (`group-species.js`): ya no se usan sugerencias pendientes y `groupSpeciesPatchForPublish` ya no unifica ni cambia la especie de las fotos del grupo al publicar/simular (solo se guarda el estado de publicación). Sin especie → se publica sin especie.
+- **Botones «Cancelar la subida» y «Deshacer lo subido (N)»** (`use-upload-platforms.js`, `PhotoGrid.js`): el primero detiene todo el proceso; el segundo borra de Minka y/o iNaturalist las observaciones subidas desde la sesión, con confirmación que dice cuántas se borrarán en cada plataforma. Backend nuevo: `POST /proxy/minka/unpublish` y `POST /proxy/inat/unpublish` (`routes_minka.py`, `routes_inat.py`): solo borran observaciones del propio usuario (verifican el login), purgan la caché de publicación (6 h) y el historial local para poder volver a subir. Borrado real en iNaturalist: sin probar de punta a punta.
+- **Identificación con foto completa** (`use-vision-pipeline.js`): se identifica la foto completa salvo que el usuario haya recortado **a mano** esa foto. Antes se mandaba siempre `_locatedBbox` (recorte por atención de BF que activa `FAUNA_LOCATE_ATTN=1`, heredado por las copias) con prioridad sobre el recorte manual: las copias recortadas a otro organismo repetían la especie de la primera. Medido (120 fotos del eval + 31 de *Corallium rubrum*): recorte por atención 69,7 % vs foto completa 80,7 % (16 aciertos perdidos, 3 ganados). El servidor ya prueba recortes por su cuenta (rescate `crop_mix`).
+- **Recorte automático por atención: solo se dibuja (decisión de Gustavo vía Robotin, 3-oct 22:48):** el bbox de `FAUNA_LOCATE_ATTN=1` (`edit_params.auto_cropped`) no puntúa al identificar (`identify-crop.js`; también `detectPhoto` → `/vision/detect`), ni se aplica al exportar/publicar (`use-photo-actions.js` `_renderExportBlob`, `MobileApp.js` `_getPhotoBlob`); solo cuenta el recorte manual. Probado con node (6 casos) y sobre lo servido en PRO.
+- **Panel Administración de BioFauna:** tarjeta nueva con la fecha de la última medida/calibración, aviso de que el acierto (82,46 % / Tier 1 77,5 %) no cambió y la lista de cambios recientes (`_BF_CAMBIOS` en `admin/index.html`). El panel no leía datos viejos (`biofauna-stats.json` se regenera a diario); parecía mudo porque solo pintaba KPIs.
+- **Log de sesión:** la réplica al servidor (`POST /usage/client-log`) no funcionaba en PRO (`API_BASE` vacío descartaba el envío en `use-logger.js`); corregido (`logs en /fauna-tmp/client-logs/user_<id>.log`). `/mnt/scripts/fauna/cleanup-fauna-tmp.sh` ya no borra `client-logs`.
+- **Reinicio rápido de `fauna_api`:** el arranque (`docker-compose.yml`, servicio `api`) ya no reinstala libs de sistema ni dependencias e2e en cada restart (`dpkg -s` / flag `/usr/local/.e2e-deps-ready.flag`): ~4 s en vez de ~30 s de 502. Backup `docker-compose.yml.bak_pre_fast_restart`.
+- **Miniaturas de especie:** generadas las 2.889 que faltaban (`scripts/make_missing_species_thumbs_20261003.py`, 75×75 desde la galería; antes 404 en el panel Identificar).
+- **Aviso de validación duplicado (EXIF) — corregido (3-oct, noche):** si Minka e iNat fallan la misma validación se muestra un único aviso (`_mergeValidationParts`); si el detalle difiere, los dos como antes.
+- **Autosave de sesión (3-oct, noche):** `flushAutosaveSync` (recargar/cerrar) escribe primero en IndexedDB; antes `localStorage.setItem` superaba la cuota (sesión de 5,58 MB), lanzaba la excepción y nunca llegaba a IDB, perdiendo las últimas ediciones al recargar. Backup `use-session.js.bak_pre_quota`.
+- **AutoID (misma fecha):** publicación a **género** con `p_genus` ≥ 0,95 (tope 50/día, primeras 30 a revisión en `logs/autoid_genus_p95_review.jsonl`; familia OFF; `AUTOID_GENUS_P95=0` desactiva); `identify` expone `p_genus`/`p_family` en sombra (`BF_HIER_SHADOW`). Ver [`AUTOID_PIPELINE.md`](AUTOID_PIPELINE.md).
+
+## 2026-10-01 — AutoID: fallback por recortes, formato nuevo de Minka, kNN en GPU, galería en archive, IA local
+
+**Código:** `hansolo-dockers` main · `fauna_api` + `biofauna-id.service` · detalle en [`../../biofauna/INFORME_SESION_20260929.md`](../../biofauna/INFORME_SESION_20260929.md) §16–§17.
+
+- **Fallback por recortes (AutoID y FF):** si la imagen completa no da ID publicable, `identify_service` prueba 4 cuadrantes, centro 17 %, saliencia y centro 40 %; rescata con confianza ≥ 0,93 y acuerdo de ≥ 2 pasos (guardia de género distinto ⇒ ≥ 3). 500 fotos: 35 → 48 publicables; lo añadido acierta 85,7 %. AutoID marca `BioFauna+recorte` (`autoid_history.source`), tope `AUTOID_CROP_MAX_DAY=30` y registra `rescue` en `logs/shadow_autoid.jsonl`. Apagar: borrar `crop_mix.conf` + reiniciar `biofauna-id`.
+- **Fix publicación manual (503 "Servidor no disponible"):** Minka devuelve ahora `/observations/{id}` como `{"results":[obs]}`; `_get_observation_owner_login` devolvía "dueño desconocido" y la política fail-closed bloqueaba. `_unwrap_obs` acepta ambos formatos (4 puntos de `routes_minka_autoid.py`; evita además duplicar IDs en `_has_our_identification`).
+- **Rendimiento:** búsqueda kNN en GPU (`BF_GPU_SEARCH=1`): `/identify` ≈ 0,2 s/llamada (antes 0,7 s). Geo prior vectorizado.
+- **Galería:** `/mnt/gpu/fotofauna-images` → enlace a `/mnt/archive/gpu_migrated_20260930/fotofauna-images`; `fauna_api` reiniciado y probado. Descargas de BioFauna Fotos sin cambios.
+- **Panel FF Administración:** estadísticas regeneradas (1-oct) y dos tarjetas nuevas: *Baseline comparable* (81,18 %) y *AutoID real (publicado)* (96,6 %); `gen_stats.py` escribe `kpi_referencia`.
+- **Credenciales:** 16 ficheros dejaron de llevar la clave antigua de BD (usan `FAUNA_DB_DSN`/`TESLAMATE_DSN`); el bind mount `./backend:/app` hace que el cambio persista sin reconstruir imagen.
+- **IA local:** Academy usa `qwen3:4b-instruct` vía Ollama (Groq retirado). Ver [`../../sistema/IA_LOCAL_OLLAMA_20261001.md`](../../sistema/IA_LOCAL_OLLAMA_20261001.md).
+
+## 2026-09-29 — AutoID publicación: token Minka de sesión web + calibración + 2 hilos
+
+**Código:** `hansolo-dockers` main (`c271a8d3f` + sync) · `fauna_api` + `biofauna-id.service`
+
+- **🔴 Fix crítico publicación AutoID**: el JWT de `.api-keys` (MINKA_API_TOKEN) solo LEE (POST → 401).
+  El token que publica es el `api_token` de la sesión web (`observe.minka-sdg.org/login` → `/session` →
+  `users/api_token`). `_minka_login` ahora hace login web primero; JWT de .api-keys como fallback de lectura.
+  TTL de caché 3.600 → 3.000 s. Verificado end-to-end (obs 881616 publicada).
+- **🔴 Fix calibración jerárquica** (causa de 0 publicaciones): `calibration_hierarchical.json` con
+  thresholds de relleno 0,895 (SHRINK_K=30) bloqueaba el rango 0,83-0,895. SHRINK_K → 1000 en
+  `fit_calib_hierarchical.py` → thresholds ~0,83. Reiniciado `biofauna-id.service`.
+- **AutoID 2 hilos**: `autoid_wave.py` con `asyncio.gather` WORKERS=2 → ritmo ~54-63 obs/min (4-5×).
+- **Minka-API_test**: token PAT `ff_pat_...` creado por Gustavo para el equipo de Minka; verificado
+  (`POST /vision/biofauna/identify` → Cratena 0,94 / Turdus 0,998). Fix `vision_routes.py` (import
+  `BIOFAUNA_URL` estaba tras un `raise` → 503; movido).
+- **YOLO retirado de AutoID** (modelos COCO no detectan fauna); attention crop evaluado (−5 pp) → default
+  OFF (`FAUNA_LOCATE_ATTN=0`), endpoint `/locate` disponible.
+- **Borrado físico de identificaciones Minka**: `DELETE observe/identifications/{id}?delete=true` + meta
+  CSRF (la API solo retira). Doc: `MINKA_BORRADO_FISICO_20260929.md`.
+
+## 2026-09-23 19:30 — FotoFauna
+**Build PRE:** `4144f67d` · **Origen:** sync automático (Chewie)
+
+- Cambios en working tree pendientes de commit (sync automático).
+
+
+## 2026-09-23 08:00 — FotoFauna
+**Build PRE:** `abd2ff25` · **Origen:** sync automático (Chewie)
+
+- Cambios en working tree pendientes de commit (sync automático).
+
+
+## 2026-09-23 07:30 — FotoFauna
+**Build PRE:** `6bbe9a07` · **Origen:** sync automático (Chewie)
+
+- Cambios en working tree pendientes de commit (sync automático).
+
+
+## 2026-09-21 — Auth BF-Fotos: renovar JWT ante 401
+
+**Código:** `hansolo-dockers` PR #40 (`cursor/ff-inat-publish-a866`) · PRE+PRO en HanSolo
+
+- El iframe `#bf-fotos` (`biofauna_download.html`) usaba `fetch` sin el refresh-on-401 del Admin → «Token inválido o expirado» con la sesión del padre aún visible.
+- Ante 401: pide token fresco al padre (`ff_request_auth_token`) y/o `POST /auth/refresh` (cookie `ff_refresh`) y reintenta.
+- El padre refresca el access JWT antes del `postMessage` al cargar el iframe; sincroniza si el hijo renueva (`ff_auth_token_updated`).
+- Cache: `PhotoGrid.js?v=auth-refresh-1`, iframe `v=20260921t`.
+
+## 2026-09-21 — iNat: publicar sin especie (regresión 17-sep)
+
+**Código:** mismo PR #40 · `routes_inat.py` + `use-upload-platforms.js`
+
+- Minka e iNat admiten observaciones `needs_id` sin taxón. El 17-sep ya se había quitado el bloqueo; el restore `d62ef6efc` lo reintrodujo en cliente y backend.
+- Cliente: no añade «falta especie» al validar; log de aviso si el lote va sin ID.
+- Backend: sin `taxon_id` ni `species_guess` → crea obs `needs_id` (no HTTP 400).
+- Dual Minka+iNat: el error de iNat ya no lo tapa el OK de Minka.
+- Payload: taxón de confirmada → pending usable → organismos (`resolvePhotoSpeciesForPublish`).
+
+## 2026-09-21 — Arrastrar foto sobre otra: agrupado fiable
+
+- El drop se perdía si `dragend` iba antes que `drop`, si se arrastraba un hijo visible del grupo, o si el `img` nativo robaba el drag.
+- PRE y PRO: siempre se agrupa el master; el id sobrevive al `dragend`; miniatura no es arrastrable.
+- Rama aparte: `cursor/ff-group-drop-a866` (no mezclar con BioFauna en esa rama).
+
+## 2026-09-21 — Identificar: flechas ya no saltan de 2 en 2
+
+- Tras seleccionar fotos, el foco queda en la rejilla: ←/→ se manejaban dos veces (grid `@keydown` + `window.keydown`) y el panel Identificar avanzaba de dos en dos.
+- PRE y PRO.
+
+## 2026-09-21 — Filtro Sobreexp. = inverso de Subexp.
+
+- El ☀ Sobreexp. ya no recorta luces a medias y mezcla de vuelta al original (por eso casi no se notaba).
+- Misma lógica que 🌙 Subexp. invertida: gain hacia gris medio 0.42 y compresión de luces (LIME + máscara). Fotos oscuras/normales siguen casi sin cambio.
+- El blanco recortado (255) no tiene detalle que recuperar.
+- Test: `backend/tests/test_enhance_overexp.py`.
+
+## 2026-09-20 — BioFauna Fotos en FF móvil
+
+- Barra inferior móvil: 📦 **BF Fotos** (solo `is_admin`), abre `biofauna_download.html` en pestaña nueva con `auth_token` (mismo patrón que Auto-ID).
+- Menú de usuario móvil: **BioFauna Fotos ↗**. Escritorio sin cambio (sigue el rail `#bf-fotos`).
+
+## 2026-09-19 — BioFauna Fotos (cierre): árbol, ZIP plano/árbol, merge renombrado
+
+**Backend:** `fauna_api` bind-mount · **Git:** `hansolo-dockers` · **Doc:** [`BIOFAUNA_FOTOS.md`](BIOFAUNA_FOTOS.md)
+
+- Árbol de descarga con `iconic`/familia. Selector: árbol taxonómico o solo carpetas de especie.
+- Merge: `DOBLE_CLIC_Unir_CSVs.bat` + `NO_ABRIR_motor_unir_CSVs.ps1`.
+- Rail 📦 `#bf-fotos`, lupa, splitter `bf_split_pct`, KPI `biofauna_exports`.
+
+## 2026-09-19 — BioFauna Fotos (descarga masiva admins) en PRE y PRO
+
+- Rail 📦 bajo AutoID (`#bf-fotos`). ZIP ≤2 GB + CSV + README; Admin KPI `biofauna_exports`.
+
+## 2026-09-18 — FF quick wins (locate + thumbs) + AutoID excluded
+
+**Doc:** [`AUTOID_PIPELINE.md`](AUTOID_PIPELINE.md), [`FF_CROP_BF_GUIDED.md`](FF_CROP_BF_GUIDED.md)
+
+- **`/vision/locate`:** solo YOLO26n; YOLO vacío o conf &lt;0,25 → full-frame a BF.
+- **Thumbs taxón:** local-first; iNat live off por defecto.
+- **AutoID:** fail-closed para observadores `excluded`.
+- **Borde:** cutover HAProxy delante de NPM.
 
 ---
 
-## 2026-09-19 — BioFauna Fotos (admin bulk download)
+## 2026-09-01 — Identificar y AutoID: candado GPS + iNat + geo
+**Backend:** bind-mount PRO/PRE · **Git:** `hansolo-dockers` rama `cursor/identify-safety-gates-aef2` · **Doc:** [`AUTOID_PIPELINE.md`](AUTOID_PIPELINE.md)
 
-Live on https://fotofauna.yespi.es (admin rail 📦). Independent ZIP parts ≤ 2 GB, CSV per species folder, merge script, README with licences. See [`BIOFAUNA_FOTOS.md`](BIOFAUNA_FOTOS.md).
+- Sin GPS no hay especie (Identificar y AutoID).
+- BioFauna propone; iNaturalist CV corrobora el binomial (fail-closed si discrepa o no responde).
+- Si la especie tiene `geo_priors` y el punto está a >500 km, se rechaza.
+- PRE: toasts de bloqueo; changelog `20260901e`.
 
 ---
 
 ## 2026-08-27 22:20 — Filtro Marina: menos rojo (gray-world ×0,82)
 **Deploy:** `docker restart fauna_api` · **Git:** `hansolo-dockers` `ae9450d7d` · **Público:** `yespi/fotofauna`
 
-- **`_marine_correct`:** el boost del canal rojo pasa de `** strength` a `** (strength × 0,82)` para evitar salmón/magenta en agua azul; G/B, CLAHE y slider intactos.
-- Paper (EN/ES) §3.4 y `docs/ARQUITECTURA.md` actualizados.
+- **`_marine_correct`:** boost del canal rojo `** (strength × 0,82)` en lugar de `** strength`; G/B, CLAHE y slider intactos.
+- Paper (EN/ES) §3.4 y docs de filtros sincronizados al repo público.
 
 ---
 
-## 2026-08-27 22:00 — FotoFauna: filtros al recorte, Subexp/Sobreexp por histograma, Re-detectar 1:1
-**Deploy:** `docker restart fauna_api` (backend único, sirve PRE+PRO) · **Git:** `hansolo-dockers` + público `yespi/fotofauna`
+## 2026-08-16 — Auto-ID: pipeline BF+recorte, guardia, email alertas
 
-Caché frontend `use-filtros.js?v=20260827c`. `fauna_api` reiniciado y healthy.
+**Backend:** bind-mount PRO/PRE · **Git:** `hansolo-dockers` (`505caf4ec` + rama `cursor/autoid-guard-email-4435`) · **Doc:** [`AUTOID_PIPELINE.md`](AUTOID_PIPELINE.md)
 
-- **Filtros al recorte activo:** los 9 filtros de servidor (enhance, sharpen, deblur, dehaze, underexp, overexp, contrast, marine, reds) se aplican al rectángulo de recorte activo (píxeles RAW, sin ajustes CSS incrustados). El resto del fotograma no cambia; el resultado se recompone en `file_filtered` a tamaño completo. Sin recorte → foto completa como antes. Caso cueva: recortar el sujeto en sombra y Subexp. analiza esa región.
-- **Subexp./Sobreexp. por histograma:** la cantidad de corrección sale de la severidad del histograma de luminancia (mediana, p10/p90, fracción recortada) × slider de intensidad (multiplicador; default 0,90 = 90 % de la cantidad automática). Subexp. eleva solo luma (croma intacta; no LIME por canal). Sobreexp. es casi no-op en fotos oscuras.
-- **Re-detectar 1:1:** 1 celda seleccionada = 1 foto (el miembro visible del grupo, no los hijos). La barra de progreso cuenta ids únicos de la oleada, no longitudes de batch acumuladas. El toast coincide.
-- **Auto-asignar BioFauna en escritorio:** `/vision/inat-score` `_biofauna_suggestion` ya no se corta por debajo del umbral jerárquico ~0,875; piso 0,15 para que el panel reciba top-k. El slider de Ajustes (`getAutoIdMinConfidence`) decide el auto-asignar. AutoID Minka / WAVE_* intactos.
-- **Duplicar:** candado de 2 s + toast; la copia recibe el recorte de fotograma completo (ya no orig+_1+_2 por doble clic).
+### Pipeline oleada (`routes_minka_autoid.py`)
+- **Recorte previo** a identificar: YOLO26n → fallback bbox IA (`AUTOID_LOCATE_AI=1`).
+- **BioFauna primero** sobre el recorte; publicación **sin iNat** si `p_species ≥ 0.75` y `WAVE_BIOFAUNA_REQUIRE_INAT=0`.
+- Historial ampliado a **500** entradas FIFO.
+
+### Guardia horaria (`autoid_guard.py`)
+- Circuit breaker: analiza `autoid_history` (1h/24h); trip desactiva planificaciones.
+- Umbrales **dinámicos** desde `autoid_schedules` (+25% headroom); subida masiva = warning, no falso positivo.
+- API `GET/POST /admin/autoid/guard`; submit bloqueado con 503 si tripped.
+- Tarea planificador `autoid_watchdog` (priority 50) + cron host `:55`.
+
+### Alertas e investigación
+- Email SMTP al admin al trip (métricas, alertas, enlace panel).
+- Registro automático en `TAREAS_PENDIENTES.md` (checklist Cursor).
+- Volumen docker-compose: `TAREAS_PENDIENTES.md` rw en `fauna_api`.
+- **Sin** Cloud Agent automático (decisión 2026-08-16).
+
+### Métricas iniciales (100 pub, 15–16 ago)
+- Fuentes: 57% iNat CV · 23% BF+iNat · 19% BF solo · 1% Minka CV.
+- Confianza media **92,6%** (68≥90%, 26 en 80–89%, 6 &lt;80%).
+- Tras deploy recorte+BF (~14:55): oleada aún con pocos datos post-cambio; monitorizar próximas horas.
+
+---
+
+## 2026-08-16 — Panel Ajustes full-screen, tokens PAT, Admin sidebar
+**Build PRO/PRE:** `3a767a18` · **Git:** `hansolo-dockers` · **Deploy:** `sync-pre-to-pro.sh` (bind-mount, sin restart)
+
+### Panel Ajustes (FaunaApp.js + styles.css)
+- Portal **a pantalla completa** con **barra lateral** (Preferencias + Información), paleta verde-pizarra (`--settings-*`), distinta del azul de la app y del rojo del admin.
+- Pestañas: **General**, **Cuentas**, **Sesiones**, **API BQ** (admin o `api_token_enabled`), **Novedades**, **Ayuda**.
+- **Novedades**: changelog integrado en timeline (sustituye modal).
+- **Ayuda**: buscador, accesos rápidos y tarjetas colapsables (sustituye modal); todas las secciones **colapsadas al abrir**.
+- Estética unificada en todas las pestañas (inputs, toggles, sesiones, botones) — sin mezcla con `--surface` azul de la app.
+- Menú usuario: solo **Ajustes** (Novedades/Ayuda viven dentro). Botón `?` y **F1** → Ajustes → Ayuda. URL `/?settings=api|ayuda|novedades|…`.
+- `api-tokens.html` redirige a `/?settings=api`.
+
+### Tokens API (PAT) — backend + UI
+- Tabla `user_api_tokens`; endpoints `GET/POST/DELETE /auth/api-tokens`.
+- `resolve_user()` acepta `Authorization: Bearer ff_pat_…`.
+- Gestión en **Ajustes → API BQ** (y pestaña homónima en Admin para referencia cruzada).
+- Docs: [`API.md`](API.md), [`../bioquest/API.md`](../bioquest/API.md).
+
+### Panel Admin (`admin/index.html`)
+- Navegación **vertical** (sidebar), paleta rojiza de precaución.
+- Fix **Usuarios**: `isSelf` definido en `renderUsersTable()` (PRE y PRO).
+- **Estadísticas**: números KPI y pipeline en **ámbar** (`--stat-value: #fbbf24`), no en el acento rojizo.
+
+### Fixes varios
+- AutoID sibling álbum (backend `autoid_wave`, cola duplicados).
+- Fix carga FF (`SyntaxError` template Vue en sesiones).
+
+---
+
+## 2026-08-16 10:23 — FotoFauna
+**Build PRE:** `dc29f68c` · **Origen:** sync automático (Chewie)
+
+- Cambios en working tree pendientes de commit (sync automático).
 
 
 ## 2026-08-15 11:xx — FotoFauna/BioQuest: cascadas LLM saneadas (modelos muertos + Gemini fuera)
@@ -66,7 +285,8 @@ modelos LLM caducados/retirados por los proveedores, disparada por un aviso ofic
   agotada, motivo real de por qué se quitó) + tráfico de producción real (ráfaga de ~46 llamadas
   del refresco de catálogo Academy tras el restart: OpenRouter respondió 200 OK el 100% de las
   veces) + sesión de navegador real con Playwright/Chrome del sistema (login, subida de foto,
-  identificación — 0 errores de consola).
+  identificación — 0 errores de consola). Detalle completo en `BIOFAUNA_SESION_STATUS.md`
+  (repo `hansolo-docs`).
 - **Nota infra**: `tests/e2e_fotofauna_flow.py` (Playwright) no arrancaba en Ubuntu 26.04 con el
   Chromium que descarga por defecto — arreglado apuntando a `google-chrome-stable` del sistema
   (`channel="chrome"`). Sus selectores de login están desactualizados (UI cambió a
@@ -87,7 +307,7 @@ modelos LLM caducados/retirados por los proveedores, disparada por un aviso ofic
 - **Re-identify tras ubicación**: arreglado dedup que bloqueaba `force=true` cuando el ID ya estaba en cola del background worker. Fotos in-flight se re-encolan automáticamente.
 - **MAX_CONCURRENT=2**: worker paralelo (antes secuencial). Con backoff para 429/red/timeout.
 - **Manual ID preservado**: `_resetPhotoForReidentify` ya no borra `species.source === 'manual'` al recortar.
-- **Geo priors en YF interactivo**: `_yolofauna_suggestion` ahora envía lat/lon/date al servicio YF.
+- **Geo priors en YF interactivo**: `_biofauna_suggestion` ahora envía lat/lon/date al servicio YF.
 
 ### UI/UX
 - **Ciclo 3 fotos especie**: botón ↻ en panel ID. 1558 especies con 3 miniaturas locales (dataset YF, 0 API calls). 4734 thumbnails totales.
@@ -105,7 +325,7 @@ modelos LLM caducados/retirados por los proveedores, disparada por un aviso ofic
 - **`ensurePhotoThumbs`**: solo regenera ausentes, no toca blobs vivos.
 - **`_qualityChecked`**: serializado en sesión (no re-analiza al restaurar).
 
-### YOLOFauna
+### BioFauna
 - **Geo priors build**: Minka-first, iNat ultra-light fallback (1 página, 5s timeout, sin reintentos). 775+/1369 especies (~80% cobertura).
 - **build_geo_priors.py**: manejo 429 con Retry-After, sleep 2s, PER_PAGE=30.
 - **build_species_thumbs.py**: 3 miniaturas por especie (dataset local YF, sin APIs).
@@ -460,3 +680,16 @@ Guía de uso de los filtros: [`FILTROS_ORGANIZACION_2026-06-13.md`](FILTROS_ORGA
 
 Entradas manuales por sesión (las automáticas del sync Chewie se retiraron 2026-08-02; Chewie ya no es espejo desde 2026-07-21).
 
+
+## 4-oct-2026 — Logs y auditoría de publicaciones (Gustavo)
+- **Causa:** tras recargar el 3-oct a las 22:43 CEST no llegó al servidor NINGUNA línea del cliente; el código de `use-logger.js` vaciaba la cola antes de comprobar `ffFetch`/sesión, no reintentaba si el POST fallaba, y un POST `keepalive` con cuerpo > 64 KB falla siempre. Además los logs del contenedor `fauna_api` se pierden al recrearlo y no existía ninguna traza de publicaciones.
+- **Backend (activo):** `backend/ff_audit.py` escribe una línea JSON por evento en `fauna-tmp/audit/ff-AAAAMMDD.jsonl` (persistente): `minka_publish`/`inat_publish` (entrada con resumen del payload —taxón, `species_guess`, fecha, coordenadas redondeadas—, salida con `observation_id`/uri, o error con status), `minka_unpublish`/`inat_unpublish` (ids) y `client_log.recv` (llegada de logs de cliente por sesión). `cleanup-fauna-tmp.sh` no borra `audit/`.
+- **Frontend (PRO, build 1a957ab0, subido 4-oct 11:33 CEST):** `use-logger.js` — cola solo se vacía con confirmación del servidor, lotes ≤ 40 KB, reintento con espera creciente, aviso de fallo limitado a 1/min, `window.ffLogStats()` para diagnosticar desde la consola.
+
+## 4-oct-2026 — Causa de "ID retirada que se publica" (PRO, subido 4-oct)
+- **Causa raíz:** el payload de publicación (`minka_payload`, persistido en la sesión) conservaba `taxon` y `species_guess` del primer ID aunque el usuario retirara la ID: (1) `applyGroupSpeciesToMinkaPayload/Inat` devolvían el payload TAL CUAL cuando no había especie resuelta (se publicaba el taxón viejo); (2) con especie, heredaban el id de taxón del payload viejo aunque fuera de otra especie; (3) `buildMinkaPayload/buildInatPayload` y `mergeMinkaPayload` rellenaban nombre/guess/id con el payload anterior; (4) `_clearIdentificationPatch` no limpiaba `minka_payload`.
+- **Arreglo:** el payload final refleja EXACTAMENTE la especie resuelta (o ninguna: `taxon` y `species_guess` a null); el id de taxón solo se hereda si el nombre es el mismo; al retirar la ID se limpia también `minka_payload`; cada publicación escribe un log `publish · taxón a publicar` (plataforma, taxón, id, origen, confianza). Probado con 8 casos en Node (sin especie, otra especie, misma, con id, builders).
+- **Sigue vigente (sin cambios):** nunca se publican sugerencias pendientes; restaurar sesión usa el autosave más reciente (IDB/LS por `savedAt`); `groupSpecies` del master manda sobre las especies de los hijos (decisión de diseño).
+
+## 4-oct-2026 — Resumen del incidente del 3-oct (cerrado)
+Causa: sugerencia pendiente publicada desde el 15 % tras quitar el gate 0,83 del servidor (arreglo en PRO 22:55, tras las subidas de 21:41-22:30) y taxón de ID retirada que persistía en `minka_payload`. Arreglos en PRO (builds 1a957ab0 y 13eff6ba). Retiradas: Minka 30, iNat 66 (obs intactas); conservadas 127 y 14 respaldadas por curadores. Ver `TAREAS_FINALIZADAS.md`.

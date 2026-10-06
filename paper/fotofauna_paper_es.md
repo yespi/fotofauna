@@ -6,6 +6,9 @@
 
 ## Resumen
 
+
+> **Actualización (2026-10-06).** Desde la nota del 2026-09-23 el identificador ha avanzado: galería viva de **1.132.767** embeddings / **4.543** especies tras dos promociones auditadas; panel de campo (78.145 filas) **82,85 %** de acierto de especie, **80,63 %** en las 54.878 filas sin fuga antes de las promociones (+0,42 a +0,50 pp después). Cambios de AutoID vistos desde el usuario: el umbral de especie sigue en 0,83; se **retiró** la regla que saltaba una especie ya publicada por el mismo usuario el mismo día (las alternativas sustituidas acertaban 3 de 11 juzgadas frente a 102 de 105 del candidato principal); si la foto entera no publica especie, un rescate en dos pasos (corrección de dominante azul, luego recorte de atención con guardia estricta) puede publicar, con tope de 20 al día; la publicación por mezcla de recortes está en pausa; la publicación a nivel de género exige p≥0,95. El 2026-10-06 se promovieron de PRE a PRO los cambios pendientes de FotoFauna (páginas SEO de 401 especies, pruebas de humo 18/18, copia previa conservada). Detalle: repositorio BioFauna, `docs/STATUS.md` y artículo §5.3.
+
 > **Nota editorial (23-sep-2026):** las cifras de calibración de §5.2 (n=12.788, 27-ago-2026) son
 > históricas. El 23-sep-2026 el proyecto compañero BioFauna descubrió que la mitad de sus filas de
 > evaluación eran copias de fotos de la galería (paper de BioFauna, O18); sin ellas el identificador

@@ -6,6 +6,9 @@
 
 ## Abstract
 
+
+> **Update (2026-10-06).** Since the 2026-09-23 note the identifier moved on: live gallery **1,132,767** embeddings / **4,543** species after two audited promotions; field panel (78,145 rows) **82.85 %** species accuracy, **80.63 %** on the 54,878 leak-free rows before the promotions (+0.42 to +0.50 pp after). AutoID changes seen from the user's side: the species-level threshold stays at 0.83; the rule that skipped a species already published by the same user on the same day was **removed** (substituted alternatives were right in 3 of 11 judged cases vs 102 of 105 for the top candidate); when the whole photo does not publish a species, a two-step rescue (blue-cast correction, then attention crop with a strict guard) may publish, capped at 20 per day; publication from crop mixes is paused; genus-level publication needs p≥0.95. On 2026-10-06 the pending FotoFauna changes were promoted from PRE to PRO (SEO pages for 401 species, smoke tests 18/18, backup kept). Details: BioFauna repository, `docs/STATUS.md` and paper §5.3.
+
 > **Editorial note (2026-09-23):** the calibration figures in §5.2 (n=12,788, 2026-08-27) are
 > historical. On 2026-09-23 the companion BioFauna project found that half of its evaluation rows
 > were copies of gallery photos (BioFauna paper, O18); after removing them the identifier scores
