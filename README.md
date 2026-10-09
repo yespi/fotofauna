@@ -10,9 +10,11 @@
 
 FotoFauna is a citizen science platform for the Mediterranean Sea. Users upload photographs of marine fauna and receive instant AI-powered species identifications via **BioFauna** (BioCLIP-2.5 ViT-H + k-NN). High-confidence predictions are auto-published to the Minka citizen science network, where professional taxonomists validate the identifications.
 
-> **Oct 2026 (6 Oct):** BioFauna index 1,132,767 vectors / 4,543 species, panel 82.85%; FotoFauna PRE→PRO deployed. See [BioFauna status](https://github.com/yespi/biofauna/blob/master/docs/STATUS.md).
+> **Oct 2026 (9 Oct):** BioFauna panel OOS **83.14%** (78,145 rows; series 82.463→82.626→82.85→83.14 after all08it2); genus 87.9%, family 91.0%; AutoID p≥0.83 ≈96% precision / ≈66.5% coverage on the eval. Live index 1,198,265 vectors / 4,543 species. See BioFauna paper §5.4 and [status](https://github.com/yespi/biofauna/blob/master/docs/STATUS.md).
 >
-> **Aug 2026:** Active remediation — consolidating SSD + HDD photo archive into embeddings to recover accuracy on rich species. See [BioFauna status](https://github.com/yespi/biofauna/blob/master/docs/STATUS.md).
+> **Oct 2026 (6 Oct):** BioFauna index 1,132,767 vectors / 4,543 species, panel 82.85%; FotoFauna PRE→PRO deployed.
+>
+> **Aug 2026:** Active remediation — consolidating SSD + HDD photo archive into embeddings to recover accuracy on rich species.
 
 ## How It Works
 
@@ -25,9 +27,9 @@ FotoFauna is a citizen science platform for the Mediterranean Sea. Users upload 
 
 | Metric | Value |
 |--------|-------|
-| Species in model | 4,543 (2026-10-06; 1,132,767 gallery embeddings) |
-| Training / gallery images | ~1.22M on disk (SSD + archive); 1.13M embedded |
-| Field panel species accuracy (out-of-sample) | 82.85% (78,145 rows; 80.63% on 54,878 leak-free rows before the latest promotions) |
+| Species in model | 4,543 (2026-10-08/09; 1,198,265 gallery embeddings after all08it2) |
+| Training / gallery images | ~1.22M on disk (SSD + archive); ~1.20M embedded |
+| Field panel species accuracy (out-of-sample) | 83.14% (78,145 rows; series 82.463→82.626→82.85→83.14; genus 87.9%, family 91.0%) |
 | Published baseline (2026 paper cohort) | 71.7% |
 | High-conf precision (p≥0.90) | 92.2% |
 | Auto-published to Minka | 100+ |

@@ -1,0 +1,95 @@
+{
+  "serie_oos": [
+    {
+      "label": "2026-10-05 pre-combo",
+      "acc": 82.463,
+      "fuente": "01_biofauna_es.md §5.3"
+    },
+    {
+      "label": "combo limpio 5-oct 18:45",
+      "acc": 82.626,
+      "fuente": "01_biofauna_es.md §5.3"
+    },
+    {
+      "label": "lotes 01+02 6-oct 02:50",
+      "acc": 82.85,
+      "fuente": "01_biofauna_es.md §5.3"
+    },
+    {
+      "label": "all08it2 8-oct 23:42",
+      "acc": 83.14,
+      "fuente": "dataset/stats.json overall_accuracy=0.8314"
+    }
+  ],
+  "field_acc": {
+    "species": 0.8314,
+    "genus": 0.8793,
+    "family": 0.9102
+  },
+  "field_acc_fuente": "dataset/stats.json → calibration.field_acc (created 2026-10-08T23:38:07, n_samples=78145)",
+  "autoid_p083_eval_completo": {
+    "umbral": 0.83,
+    "cobertura": 0.6642,
+    "precision": 0.9597,
+    "n_publicables": 51906,
+    "n_eval": 78145,
+    "fuente": "calib_raw_t05.jsonl + calibration.json (coef/mu/sd del modelo full)",
+    "nota": "66,42 % ≈ 66,5 %; 95,97 % ≈ 96 %"
+  },
+  "operating_points_fuente": "dataset/calibration.json → levels.species.operating_points (split test; umbrales 0,50…0,98 sin 0,83 exacto)",
+  "descartados": [
+    {
+      "metodo": "SigLIP (2º backbone)",
+      "delta_pp": -0.073,
+      "detalle": "27 fix / 36 brk n=12.298",
+      "fuente": "artifacts/exp_altbackbone_siglip_20260930.json"
+    },
+    {
+      "metodo": "DINOv2 fusión",
+      "delta_pp": -6.75,
+      "detalle": "R22",
+      "fuente": "01_biofauna_es.md §4.2 R22"
+    },
+    {
+      "metodo": "DINOv3 desempate",
+      "delta_pp": -0.7,
+      "detalle": "58,9% vs 59,6% BF",
+      "fuente": "artifacts/exp_dinov3_pares_20261005.json"
+    },
+    {
+      "metodo": "VLM MiniCPM",
+      "delta_pp": -6.48,
+      "detalle": "51,9% vs 58,3% BF",
+      "fuente": "artifacts/exp_vlm_compara_pares_20261005_minicpm-v_latest.json"
+    },
+    {
+      "metodo": "BioCLIP2-L 2º backbone",
+      "delta_pp": 0.064,
+      "detalle": "+0,40 pp filas p=0,06",
+      "fuente": "artifacts/exp_altbackbone_bioclip2_20260930.json"
+    },
+    {
+      "metodo": "YOLO crop vs fusión",
+      "delta_pp": -5.88,
+      "detalle": "74,97 vs 80,85 n=4000",
+      "fuente": "artifacts/exp_det_ab_20261005_yolo.json"
+    },
+    {
+      "metodo": "LoRA+ArcFace 1.358 spp",
+      "delta_pp": -31.2,
+      "detalle": "R6",
+      "fuente": "01_biofauna_es.md §4.2 R6"
+    },
+    {
+      "metodo": "Poda outliers embedding",
+      "delta_pp": -0.83,
+      "detalle": "−0,21…−1,45 pp (mid)",
+      "fuente": "01_biofauna_es.md §4.2 R10"
+    }
+  ],
+  "all08it2": {
+    "decide_promote": "artifacts/decide_promote_calib_raw_t05_stg_all08it2_20261005.json (delta +0,294 pp; criterio b no cumplía 2×; promote OK por Robotin)",
+    "confirmacion": "agent-bus/inbox/claude/20261008-234238-robotin.md (OOS 0,8314; antes 0,8285)",
+    "stats": "dataset/stats.json overall_accuracy=0.8314; calib_raw_t05_meta.json acc≈0.831416 n=78145"
+  }
+}
